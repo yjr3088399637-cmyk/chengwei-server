@@ -1,7 +1,9 @@
 package com.hmdp.service;
 
+import com.hmdp.dto.Result;
 import com.hmdp.entity.VoucherOrder;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * <p>
@@ -13,4 +15,10 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IVoucherOrderService extends IService<VoucherOrder> {
 
+    Result secKill(Long voucherId);
+
+
+
+    @Transactional
+    Result creatOrder(Long voucherId, Long userId);
 }

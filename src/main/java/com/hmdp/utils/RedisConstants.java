@@ -21,4 +21,5 @@ public class RedisConstants {
     public static final String USER_SIGN_KEY = "sign:";
     public static final long CACHE_SHOP_TTL_RANDOM = 1800;
     public static final long CACHE_SHOP_TTL_BASE = 3600;
+    public static final String ORDER_ID = "order_id";
 }
