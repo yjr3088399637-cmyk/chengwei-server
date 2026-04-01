@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 import java.io.Serializable;
@@ -79,5 +80,6 @@ public class VoucherOrder implements Serializable {
      */
     private LocalDateTime updateTime;
 
-
+    public VoucherOrder() {
+    }
 }
