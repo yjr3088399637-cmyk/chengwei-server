@@ -22,4 +22,5 @@ public class RedisConstants {
     public static final long CACHE_SHOP_TTL_RANDOM = 1800;
     public static final long CACHE_SHOP_TTL_BASE = 3600;
     public static final String ORDER_ID = "order_id";
+    public static final String SECKILL_STOCK_VOUCHER_KEY = "seckill:stock:voucher:";
 }
