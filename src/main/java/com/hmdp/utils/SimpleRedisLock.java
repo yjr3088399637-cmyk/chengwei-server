@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
+//自定义redis锁
 public class SimpleRedisLock implements ILock {
 
     private String key;
