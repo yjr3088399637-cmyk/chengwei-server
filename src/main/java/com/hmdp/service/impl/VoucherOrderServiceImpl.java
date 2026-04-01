@@ -38,6 +38,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Autowired
     StringRedisTemplate stringRedisTemplate;
 
+
+
     @Override
     public Result secKill(Long voucherId) {
         SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
