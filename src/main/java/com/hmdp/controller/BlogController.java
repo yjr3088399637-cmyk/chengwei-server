@@ -8,8 +8,11 @@ import com.hmdp.entity.Blog;
 import com.hmdp.entity.User;
 import com.hmdp.service.IBlogService;
 import com.hmdp.service.IUserService;
+import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -31,6 +34,8 @@ public class BlogController {
     private IBlogService blogService;
     @Resource
     private IUserService userService;
+    @Autowired
+    StringRedisTemplate stringRedisTemplate;
 
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
@@ -46,9 +51,8 @@ public class BlogController {
     @PutMapping("/like/{id}")
     public Result likeBlog(@PathVariable("id") Long id) {
         // 修改点赞数量
-        blogService.update()
-                .setSql("liked = liked + 1").eq("id", id).update();
-        return Result.ok();
+
+        return blogService.likeBlog(id);
     }
 
     @GetMapping("/of/me")
@@ -65,6 +69,7 @@ public class BlogController {
 
     @GetMapping("/hot")
     public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+
         // 根据用户查询
         Page<Blog> page = blogService.query()
                 .orderByDesc("liked")
@@ -77,7 +82,28 @@ public class BlogController {
             User user = userService.getById(userId);
             blog.setName(user.getNickName());
             blog.setIcon(user.getIcon());
+            //判断当前用户是否点赞
+            UserDTO currUser = UserHolder.getUser();
+            //如果用户已登录
+            if(currUser != null){
+                String currUserId = currUser.getId().toString();
+                String blogKey = RedisConstants.BLOG_LIKED_KEY + blog.getId();
+                Double score = stringRedisTemplate.opsForZSet().score(blogKey, currUserId);
+                blog.setIsLike(score != null);
+            }else{
+                blog.setIsLike(false);
+            }
         });
         return Result.ok(records);
+    }
+    //查商铺详细信息
+    @GetMapping("/{id}")
+    public Result queryBlogById(@PathVariable("id") Long id) {
+        return blogService.queryBlogById(id);
+    }
+
+    @GetMapping("/likes/{id}")
+    public Result queryBlogLikes(@PathVariable("id") Long id) {
+        return blogService.queryBlogLikes(id);
     }
 }

@@ -21,7 +21,7 @@ spring:
     host: localhost
     port: 6379
     #password: 123321
-    timeout: 2s
+    timeout: 5s
     database: 2
     lettuce:
       pool:
@@ -36,3 +36,9 @@ mybatis-plus:
 logging:
   level:
     com.hmdp: debug
+
+aliyun:
+  oss:
+    bucket-name: java-yjr
+    endpoint: https://oss-cn-beijing.aliyuncs.com
+    region: cn-beijing

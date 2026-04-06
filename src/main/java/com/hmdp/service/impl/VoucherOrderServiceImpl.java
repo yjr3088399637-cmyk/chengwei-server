@@ -73,14 +73,17 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     //在Bean初始化时执行
     @PostConstruct
     public void init() {
-        SINGLE_THREAD_EXECUTOR.submit(new HandleOrder());
+        log.info("=== 初始化异步订单线程 ===");
+        SINGLE_THREAD_EXECUTOR.execute(new HandleOrder());
     }
 
     class HandleOrder implements Runnable {
         @Override
         public void run() {
+            log.info("=== HandleOrder 线程启动成功 ===");
             while (true) {
                 try {
+                    //log.info("准备读取 stream 新消息...");
                     List<MapRecord<String, Object, Object>> records =
                             stringRedisTemplate.opsForStream().read(
                                     Consumer.from(GROUP_NAME, CONSUMER_NAME), // 消费者组
@@ -89,7 +92,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                                             .count(1),                    // 一次读1条
                                     StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()) // 从上次读完的位置继续
                             );
+                    //log.info("读取结果 records = {}", records);
                     if (records == null || records.isEmpty()) {
+                        //log.info("records is null or empty,continue ...");
                         continue;
                     }
                     //解析数据
@@ -97,22 +102,27 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     VoucherOrder voucherOrder = new VoucherOrder();
                     BeanUtil.fillBeanWithMap(map,voucherOrder,true);
                     //TODO 从成员变量中获取代理对象是否正正确?
+                    log.info("调用 creatOrder 前，proxy = {}", proxy);
                     proxy.creatOrder(voucherOrder);
+                    if(proxy == null){
+                        log.info("proxy is null");
+                        continue;
+                    }
                     //发送确认ACK
                     stringRedisTemplate.opsForStream().acknowledge(
                             STREAM_KEY,
                             GROUP_NAME,
                             records.get(0).getId()
                     );
-                } catch (IllegalStateException e) {
+                } catch (Exception e) {
+                    log.error(e.getMessage());
                     while(true){
                         try {
                             List<MapRecord<String, Object, Object>> records = stringRedisTemplate.opsForStream().read(
                                     Consumer.from(GROUP_NAME, CONSUMER_NAME),
                                     StreamReadOptions.empty()
-                                            .block(Duration.ZERO)
                                             .count(1),
-                                    StreamOffset.create(STREAM_KEY, ReadOffset.from("-"))
+                                    StreamOffset.create(STREAM_KEY, ReadOffset.from("0"))
                             );
                             //Pending队列已经为空
                             if (records == null || records.isEmpty()) {
@@ -130,7 +140,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                                     GROUP_NAME,
                                     records.get(0).getId()
                             );
-                        } catch (IllegalStateException ex) {
+                        } catch (Exception ex) {
                             log.error(ex.getMessage());
                             try {
                                 Thread.sleep(2000);
@@ -156,10 +166,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Override
     public Result secKill(Long voucherId) {
         //先生成订单号
-        long orderId = redisWorker.nextId(RedisConstants.ORDER_ID);
+        Long orderId = redisWorker.nextId(RedisConstants.ORDER_ID);
         //使用lua脚本判断库存是否充足，是否已经下单
         Long result = stringRedisTemplate.execute
-                (SECKILL_SCRIPT, Collections.emptyList(), voucherId.toString(), UserHolder.getUser().getId().toString(),orderId);
+                (SECKILL_SCRIPT, Collections.emptyList(), voucherId.toString(), UserHolder.getUser().getId().toString(),orderId.toString());
         if (result.intValue() != 0) {
             return Result.fail(result.intValue() == 1 ? "库存不足" : "不能重复下单");
         }
