@@ -17,7 +17,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -78,5 +81,39 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
             return Result.ok(userDTOList);
         }
         return Result.ok();
+    }
+
+    @Override
+    public Result queryMyFollows() {
+        Long userId = UserHolder.getUser().getId();
+        List<Follow> follows = query()
+                .eq("user_id", userId)
+                .orderByDesc("create_time")
+                .list();
+        return Result.ok(buildUserDTOList(follows, Follow::getFollowUserId));
+    }
+
+    @Override
+    public Result queryMyFans() {
+        Long userId = UserHolder.getUser().getId();
+        List<Follow> fans = query()
+                .eq("follow_user_id", userId)
+                .orderByDesc("create_time")
+                .list();
+        return Result.ok(buildUserDTOList(fans, Follow::getUserId));
+    }
+
+    private List<UserDTO> buildUserDTOList(List<Follow> follows, java.util.function.Function<Follow, Long> idGetter) {
+        if (follows == null || follows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Long> ids = follows.stream().map(idGetter).collect(Collectors.toList());
+        Map<Long, UserDTO> userMap = userService.listByIds(ids).stream()
+                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+                .collect(Collectors.toMap(UserDTO::getId, user -> user, (a, b) -> a, LinkedHashMap::new));
+        return ids.stream()
+                .map(userMap::get)
+                .filter(user -> user != null)
+                .collect(Collectors.toList());
     }
 }

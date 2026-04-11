@@ -34,4 +34,14 @@ public class FollowController {
         return followService.followCommons(id);
     }
 
+    @GetMapping("/me/follows")
+    public Result queryMyFollows() {
+        return followService.queryMyFollows();
+    }
+
+    @GetMapping("/me/fans")
+    public Result queryMyFans() {
+        return followService.queryMyFans();
+    }
+
 }

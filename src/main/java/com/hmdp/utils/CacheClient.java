@@ -5,7 +5,6 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
-import com.hmdp.dto.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -19,134 +18,121 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static com.hmdp.utils.RedisConstants.CACHE_NULL_TTL;
-import static com.hmdp.utils.RedisConstants.CACHE_SHOP_KEY;
 
 @Slf4j
 @Component
 public class CacheClient {
 
-
-
-
-
     private static final ExecutorService CACHE_REFRESH_EXECUTOR = Executors.newFixedThreadPool(5);
+    private static final long DEFAULT_LOGICAL_EXPIRE_SECONDS = 20L;
 
     @Autowired
     StringRedisTemplate stringRedisTemplate;
-
-
 
     public void set(String key, Object value, Long time, TimeUnit unit) {
         stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(value), time, unit);
     }
 
     public void setWithLogicalExpire(String key, Object value, Long time, TimeUnit unit) {
-        // 设置逻辑过期
         RedisData redisData = new RedisData();
         redisData.setData(value);
         redisData.setExpireTime(LocalDateTime.now().plusSeconds(unit.toSeconds(time)));
-        // 写入Redis
         stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(redisData));
     }
-
 
     @SentinelResource(
             value = "queryWithPassThrough",
             blockHandler = "blockPassThrough",
             fallback = "fallbackPassThrough"
     )
-    public <R,ID> R queryWithPassThrough(String keyPrefix, ID id , Class<R> type, Function<ID,R> dbFallBack,Long time, TimeUnit unit) {
+    public <R, ID> R queryWithPassThrough(
+            String keyPrefix, ID id, Class<R> type,
+            Function<ID, R> dbFallBack, Long time, TimeUnit unit
+    ) {
         String key = keyPrefix + id;
-        // 1. 从redis查询商铺缓存
         String json = stringRedisTemplate.opsForValue().get(key);
-        // 2. 判断是否存在
         if (StrUtil.isNotBlank(json)) {
-            // 3. 存在，直接返回
             return JSONUtil.toBean(json, type);
         }
-        // 判断命中的是否是空值
         if (Objects.equals(json, "")) {
-            // 返回一个错误信息
             return null;
         }
-        // 4. 不存在，根据id查询数据库
         R r = dbFallBack.apply(id);
-        // 5. 不存在，返回错误
         if (r == null) {
-            // 将空值写入redis，防止缓存穿透
             stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
-            // 返回错误信息
             return null;
         }
-        // 6. 存在，写入redis
-        set(key,r,time,unit);
+        set(key, r, time, unit);
         return r;
     }
+
     @SentinelResource(
             value = "queryWithLogicalExpireTime",
             blockHandler = "blockLogicalExpire",
             fallback = "fallbackLogicalExpire"
     )
-    public <R,ID> R queryWithLogicalExpireTime(String keyPrefix,String lockPrefix,ID id,Class<R> type,Function<ID,R> dbQuery){
+    public <R, ID> R queryWithLogicalExpireTime(
+            String keyPrefix, String lockPrefix, ID id, Class<R> type, Function<ID, R> dbQuery
+    ) {
         String key = keyPrefix + id;
-        String json;
-        try {
-            json = stringRedisTemplate.opsForValue().get(key);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        //如果不是空白字符串
+        String json = getCacheValue(key);
         if (StrUtil.isBlank(json)) {
             log.info("缓存未命中，ID:{}", id);
-            return null;
+            return queryWithMutexLockAndLogicalExpire(
+                    keyPrefix, lockPrefix, id, type, dbQuery, DEFAULT_LOGICAL_EXPIRE_SECONDS, TimeUnit.SECONDS
+            );
         }
-        //判断是否过期
+
         RedisData redisData = JSONUtil.toBean(json, RedisData.class);
         R r = JSONUtil.toBean(JSONUtil.toJsonStr(redisData.getData()), type);
         LocalDateTime expireTime = redisData.getExpireTime();
-        //如果未过期
-        if(expireTime.isAfter(LocalDateTime.now())){
-            log.info("{}:逻辑未过期，返回最新值", Thread.currentThread().getName());
+        if (expireTime != null && expireTime.isAfter(LocalDateTime.now())) {
+            log.info("{}:逻辑未过期，直接返回缓存", Thread.currentThread().getName());
             return r;
         }
-        log.info("{}:逻辑过期，尝试加锁", Thread.currentThread().getName());
+
+        log.info("{}:逻辑已过期，尝试获取锁重建缓存", Thread.currentThread().getName());
         String lockKey = lockPrefix + id;
-        //如果已过期则尝试加锁
         boolean isLock = tryLock(lockKey);
-        if(!isLock){
-            //加锁失败则已有线程处理，返回旧值
-            log.info("{}:已有线程处理，返回旧值", Thread.currentThread().getName());
+        if (!isLock) {
+            log.info("{}:已有线程在重建缓存，先返回旧值", Thread.currentThread().getName());
             return r;
         }
-        //加锁成功则二次判断是否过期
-        redisData = JSONUtil.toBean(json, RedisData.class);
-        r = JSONUtil.toBean(JSONUtil.toJsonStr(redisData.getData()), type);
-        expireTime = redisData.getExpireTime();
-        if(expireTime.isAfter(LocalDateTime.now())){
-            log.info("{}:加锁成功，但二次判断未过期，直接返回", Thread.currentThread().getName());
-            return r;
+
+        String latestJson = getCacheValue(key);
+        if (StrUtil.isBlank(latestJson)) {
+            unlock(lockKey);
+            return queryWithMutexLockAndLogicalExpire(
+                    keyPrefix, lockPrefix, id, type, dbQuery, DEFAULT_LOGICAL_EXPIRE_SECONDS, TimeUnit.SECONDS
+            );
         }
-        //给线程池提交任务
-        CACHE_REFRESH_EXECUTOR.submit(()->{
+
+        RedisData latestRedisData = JSONUtil.toBean(latestJson, RedisData.class);
+        R latestData = JSONUtil.toBean(JSONUtil.toJsonStr(latestRedisData.getData()), type);
+        LocalDateTime latestExpireTime = latestRedisData.getExpireTime();
+        if (latestExpireTime != null && latestExpireTime.isAfter(LocalDateTime.now())) {
+            unlock(lockKey);
+            log.info("{}:拿到锁后发现缓存已刷新，直接返回", Thread.currentThread().getName());
+            return latestData;
+        }
+
+        CACHE_REFRESH_EXECUTOR.submit(() -> {
             try {
-                log.info("{}:正在异步同步新值到redis", Thread.currentThread().getName());
-                saveShop2Redis(id,20L,key,dbQuery);
+                log.info("{}:异步重建逻辑过期缓存", Thread.currentThread().getName());
+                saveShop2Redis(id, DEFAULT_LOGICAL_EXPIRE_SECONDS, key, dbQuery);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             } finally {
                 unlock(lockKey);
             }
         });
-        //提交任务之后依旧返回shop
-        return r;
+        return latestData;
     }
 
-    //封装逻辑过期时间（数据预热）
-    public <ID,R> void saveShop2Redis(ID id,Long expireSeconds,String key,Function<ID,R> dbQuery){
+    public <ID, R> void saveShop2Redis(ID id, Long expireSeconds, String key, Function<ID, R> dbQuery) {
         R r = dbQuery.apply(id);
         RedisData redisData = new RedisData(r, LocalDateTime.now().plusSeconds(expireSeconds));
-        stringRedisTemplate.opsForValue().set(key,JSONUtil.toJsonStr(redisData));
+        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(redisData));
     }
 
     @SentinelResource(
@@ -154,74 +140,123 @@ public class CacheClient {
             blockHandler = "blockMutexLock",
             fallback = "fallbackMutexLock"
     )
-    public <ID,R> R queryWithMutexLock(String keyPrefix,String lockKey,ID id,Class<R> type,Function<ID,R> dbQuery,Long expireTime,TimeUnit unit){
-        //从redis中查缓存
-        String json;
-        try {
-            json = stringRedisTemplate.opsForValue().get(keyPrefix + id.toString());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        //如果不是空白字符串
+    public <ID, R> R queryWithMutexLock(
+            String keyPrefix, String lockKey, ID id, Class<R> type,
+            Function<ID, R> dbQuery, Long expireTime, TimeUnit unit
+    ) {
+        String json = getCacheValue(keyPrefix + id);
         if (StrUtil.isNotBlank(json)) {
             log.info("缓存命中，ID:{}", id);
-            //缓存命中则返回
             return JSONUtil.toBean(json, type);
         }
-        //如果是空值字符串
         if (Objects.equals(json, "")) {
-            log.info("缓存空值生效id:{}", id);
+            log.info("缓存空值命中，ID:{}", id);
             return null;
         }
         log.info("缓存未命中，ID:{}", id);
 
-        //创建锁的key，开始解决缓存击穿
-        String lock =  lockKey + id;
+        String lock = lockKey + id;
         boolean isLock = tryLock(lock);
 
         R r;
         try {
-            if(!isLock){
-                //没获取到锁则重新查
-                log.info("未获取到锁:{}，阻塞等待",keyPrefix);
+            if (!isLock) {
+                log.info("未获取到锁{}，阻塞等待", keyPrefix);
                 Thread.sleep(100);
-                return queryWithMutexLock(keyPrefix,lockKey,id,type,dbQuery,expireTime,unit);
+                return queryWithMutexLock(keyPrefix, lockKey, id, type, dbQuery, expireTime, unit);
             }
-            //未命中则查数据库（空字符串）
             r = dbQuery.apply(id);
-            //模拟延时
             Thread.sleep(200);
             if (r == null) {
-                //缓存空值，防止缓存穿透
                 log.info("正在缓存空值，ID:{}~~", id);
-                stringRedisTemplate.opsForValue().set(keyPrefix + id.toString(), "", CACHE_NULL_TTL, TimeUnit.MINUTES);
+                stringRedisTemplate.opsForValue().set(keyPrefix + id, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
                 return null;
             }
-            //将查到的数据放入缓存
-            stringRedisTemplate.opsForValue()
-                    .set(keyPrefix + id, JSONUtil.toJsonStr(r), expireTime, unit);
+            stringRedisTemplate.opsForValue().set(keyPrefix + id, JSONUtil.toJsonStr(r), expireTime, unit);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            unlock(lock);
+            if (isLock) {
+                unlock(lock);
+            }
         }
         return r;
     }
 
+    public <ID, R> R queryWithMutexLockAndLogicalExpire(
+            String keyPrefix, String lockKeyPrefix, ID id, Class<R> type,
+            Function<ID, R> dbQuery, Long expireTime, TimeUnit unit
+    ) {
+        String key = keyPrefix + id;
+        String json = getCacheValue(key);
+        if (StrUtil.isNotBlank(json)) {
+            RedisData redisData = JSONUtil.toBean(json, RedisData.class);
+            return JSONUtil.toBean(JSONUtil.toJsonStr(redisData.getData()), type);
+        }
+        if (Objects.equals(json, "")) {
+            log.info("缓存空值命中，ID:{}", id);
+            return null;
+        }
+        log.info("缓存未命中，ID:{}，进入互斥锁重建", id);
 
+        String lockKey = lockKeyPrefix + id;
+        boolean isLock = tryLock(lockKey);
+        try {
+            if (!isLock) {
+                log.info("未获取到锁{}，阻塞等待", lockKey);
+                Thread.sleep(100);
+                return queryWithMutexLockAndLogicalExpire(keyPrefix, lockKeyPrefix, id, type, dbQuery, expireTime, unit);
+            }
 
-    //加锁逻辑
-    private boolean tryLock(String key){
-        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key,"1",10,TimeUnit.MINUTES);
+            json = getCacheValue(key);
+            if (StrUtil.isNotBlank(json)) {
+                RedisData redisData = JSONUtil.toBean(json, RedisData.class);
+                return JSONUtil.toBean(JSONUtil.toJsonStr(redisData.getData()), type);
+            }
+            if (Objects.equals(json, "")) {
+                return null;
+            }
+
+            R r = dbQuery.apply(id);
+            Thread.sleep(200);
+            if (r == null) {
+                log.info("正在缓存空值，ID:{}~~", id);
+                stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
+                return null;
+            }
+            setWithLogicalExpire(key, r, expireTime, unit);
+            return r;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (isLock) {
+                unlock(lockKey);
+            }
+        }
+    }
+
+    private String getCacheValue(String key) {
+        try {
+            return stringRedisTemplate.opsForValue().get(key);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private boolean tryLock(String key) {
+        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10, TimeUnit.MINUTES);
         return BooleanUtil.isTrue(flag);
     }
-    //释放锁
-    private void unlock(String key){
+
+    private void unlock(String key) {
         stringRedisTemplate.delete(key);
     }
-
-    //Sentinel处理逻辑
 
     public <R, ID> R blockPassThrough(
             String keyPrefix, ID id, Class<R> type,
@@ -231,12 +266,13 @@ public class CacheClient {
         log.error("限流了:{}", e.getMessage());
         return null;
     }
+
     public <R, ID> R fallbackPassThrough(
             String keyPrefix, ID id, Class<R> type,
             Function<ID, R> dbFallBack, Long time, TimeUnit unit,
             Throwable ex
     ) {
-        log.error("异常了，直接查库");
+        log.error("发生异常，直接查库");
         return dbFallBack.apply(id);
     }
 
@@ -247,11 +283,12 @@ public class CacheClient {
         log.error("限流了:{}", e.getMessage());
         return null;
     }
+
     public <R, ID> R fallbackLogicalExpire(
             String keyPrefix, String lockPrefix, ID id, Class<R> type, Function<ID, R> dbQuery,
             Throwable ex
     ) {
-        log.error("异常了，直接查库");
+        log.error("发生异常，直接查库");
         return dbQuery.apply(id);
     }
 
@@ -263,13 +300,13 @@ public class CacheClient {
         log.error("限流了:{}", e.getMessage());
         return null;
     }
+
     public <R, ID> R fallbackMutexLock(
             String keyPrefix, String lockKey, ID id, Class<R> type,
             Function<ID, R> dbQuery, Long expireTime, TimeUnit unit,
             Throwable ex
     ) {
-        log.error("异常了，直接查库");
+        log.error("发生异常，直接查库");
         return dbQuery.apply(id);
     }
-
 }
