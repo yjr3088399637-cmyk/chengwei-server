@@ -3,19 +3,16 @@ package com.chengwei.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * <p>
- * 
- * </p>
- *
- * @since 2021-12-22
- */
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
@@ -34,22 +31,27 @@ public class VoucherOrder implements Serializable {
     private Long id;
 
     /**
-     * 下单的用户id
+     * 下单用户 id
      */
     private Long userId;
 
     /**
-     * 购买的代金券id
+     * 购买的代金券 id
      */
     private Long voucherId;
 
     /**
-     * 支付方式 1：余额支付；2：支付宝；3：微信
+     * 核销码
+     */
+    private String verifyCode;
+
+    /**
+     * 支付方式：1 余额支付，2 支付宝，3 微信
      */
     private Integer payType;
 
     /**
-     * 订单状态，1：未支付；2：已支付；3：已核销；4：已取消；5：退款中；6：已退款
+     * 订单状态：1 未支付，2 已支付，3 已核销，4 已取消，5 退款中，6 已退款
      */
     private Integer status;
 
@@ -67,6 +69,16 @@ public class VoucherOrder implements Serializable {
      * 核销时间
      */
     private LocalDateTime useTime;
+
+    /**
+     * 核销店员 id
+     */
+    private Long verifyClerkId;
+
+    /**
+     * 核销门店 id
+     */
+    private Long verifyShopId;
 
     /**
      * 退款时间

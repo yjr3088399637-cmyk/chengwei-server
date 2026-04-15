@@ -1236,6 +1236,28 @@ CREATE TABLE `tb_user_info`  (
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for tb_shop_clerk
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_shop_clerk`;
+CREATE TABLE `tb_shop_clerk`  (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `shop_id` bigint(20) UNSIGNED NOT NULL COMMENT '店铺id',
+  `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '店员账号',
+  `password` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '店员密码',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '店员名称',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态 1启用 0禁用',
+  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_shop_clerk_username`(`username`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Compact;
+
+-- ----------------------------
+-- Records of tb_shop_clerk
+-- ----------------------------
+INSERT INTO `tb_shop_clerk` VALUES (1, 1, 'clerk103', '123456', '103店员', 1, NOW(), NOW());
+
+-- ----------------------------
 -- Table structure for tb_voucher
 -- ----------------------------
 DROP TABLE IF EXISTS `tb_voucher`;
@@ -1266,14 +1288,18 @@ CREATE TABLE `tb_voucher_order`  (
   `id` bigint(20) NOT NULL COMMENT '主键',
   `user_id` bigint(20) UNSIGNED NOT NULL COMMENT '下单的用户id',
   `voucher_id` bigint(20) UNSIGNED NOT NULL COMMENT '购买的代金券id',
+  `verify_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '核销码',
   `pay_type` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '支付方式 1：余额支付；2：支付宝；3：微信',
   `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '订单状态，1：未支付；2：已支付；3：已核销；4：已取消；5：退款中；6：已退款',
   `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
   `pay_time` timestamp NULL DEFAULT NULL COMMENT '支付时间',
   `use_time` timestamp NULL DEFAULT NULL COMMENT '核销时间',
+  `verify_clerk_id` bigint(20) UNSIGNED NULL DEFAULT NULL COMMENT '核销店员id',
+  `verify_shop_id` bigint(20) UNSIGNED NULL DEFAULT NULL COMMENT '核销门店id',
   `refund_time` timestamp NULL DEFAULT NULL COMMENT '退款时间',
   `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`) USING BTREE
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_voucher_order_verify_code`(`verify_code`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Compact;
 
 -- ----------------------------

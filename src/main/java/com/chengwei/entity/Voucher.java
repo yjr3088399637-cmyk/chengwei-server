@@ -11,13 +11,6 @@ import lombok.experimental.Accessors;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * <p>
- * 
- * </p>
- *
- * @since 2021-12-22
- */
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
@@ -33,7 +26,7 @@ public class Voucher implements Serializable {
     private Long id;
 
     /**
-     * 商铺id
+     * 店铺 id
      */
     private Long shopId;
 
@@ -68,9 +61,10 @@ public class Voucher implements Serializable {
     private Integer type;
 
     /**
-     * 优惠券类型
+     * 状态
      */
     private Integer status;
+
     /**
      * 库存
      */
@@ -94,11 +88,8 @@ public class Voucher implements Serializable {
      */
     private LocalDateTime createTime;
 
-
     /**
      * 更新时间
      */
     private LocalDateTime updateTime;
-
-
 }

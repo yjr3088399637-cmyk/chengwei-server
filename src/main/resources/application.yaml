@@ -1,10 +1,11 @@
 server:
   port: 8081
+
 spring:
   cloud:
     sentinel:
       enabled: true
-        # 鎺ㄨ崘锛氬紑鍚紶杈撳眰锛坉ashboard 鍙璧勬簮銆佸疄鏃剁洃鎺э級
+      # 推荐开启传输层，便于在 dashboard 中查看资源和实时监控
       transport:
         dashboard: localhost:8090
         port: 8719
@@ -14,13 +15,13 @@ spring:
     name: chengwei
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://127.0.0.1:3306/chengwei?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: 123456
   redis:
     host: localhost
     port: 6379
-    #password: 123321
+    # password: 123321
     timeout: 5s
     database: 2
     lettuce:
@@ -30,9 +31,11 @@ spring:
         min-idle: 1
         time-between-eviction-runs: 10s
   jackson:
-    default-property-inclusion: non_null # JSON澶勭悊鏃跺拷鐣ラ潪绌哄瓧娈?
+    default-property-inclusion: non_null # JSON 处理时忽略空字段
+
 mybatis-plus:
-  type-aliases-package: com.chengwei.entity # 鍒悕鎵弿鍖?
+  type-aliases-package: com.chengwei.entity # 别名扫描包
+
 logging:
   level:
     com.chengwei: debug
@@ -42,4 +45,3 @@ aliyun:
     bucket-name: java-yjr
     endpoint: https://oss-cn-beijing.aliyuncs.com
     region: cn-beijing
-

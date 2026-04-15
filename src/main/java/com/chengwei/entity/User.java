@@ -10,13 +10,6 @@ import lombok.experimental.Accessors;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * <p>
- * 
- * </p>
- *
- * @since 2021-12-22
- */
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
@@ -32,12 +25,12 @@ public class User implements Serializable {
     private Long id;
 
     /**
-     * 手机号码
+     * 手机号
      */
     private String phone;
 
     /**
-     * 密码，加密存储
+     * 密码，已加密存储
      */
     private String password;
 
@@ -60,6 +53,4 @@ public class User implements Serializable {
      * 更新时间
      */
     private LocalDateTime updateTime;
-
-
 }

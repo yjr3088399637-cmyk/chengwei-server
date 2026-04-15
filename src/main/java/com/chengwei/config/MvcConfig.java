@@ -1,6 +1,7 @@
 package com.chengwei.config;
 
 import com.chengwei.utils.LoginInterceptor;
+import com.chengwei.utils.ClerkLoginInterceptor;
 import com.chengwei.utils.RefreshInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +12,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class MvcConfig implements WebMvcConfigurer {
     @Autowired
     LoginInterceptor loginInterceptor;
+    @Autowired
+    ClerkLoginInterceptor clerkLoginInterceptor;
     @Autowired
     RefreshInterceptor refreshInterceptor;
     @Override
@@ -24,8 +27,12 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/upload/**",
                         "/blog/hot",
                         "/user/code",
-                        "/user/login"
+                        "/user/login",
+                        "/clerk/**"
                 );
+        registry.addInterceptor(clerkLoginInterceptor).addPathPatterns("/clerk/**")
+                .excludePathPatterns("/clerk/login")
+                .order(1);
         registry.addInterceptor(refreshInterceptor).addPathPatterns("/**").order(0);
     }
 }

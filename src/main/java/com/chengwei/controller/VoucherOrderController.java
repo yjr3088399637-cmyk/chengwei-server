@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,5 +32,20 @@ public class VoucherOrderController {
     @GetMapping("/me")
     public Result queryMyOrders() {
         return voucherOrderService.queryMyOrders();
+    }
+
+    @PutMapping("/{id}/pay")
+    public Result payOrder(@PathVariable("id") Long orderId) {
+        return voucherOrderService.payOrder(orderId);
+    }
+
+    @PutMapping("/{id}/cancel")
+    public Result cancelOrder(@PathVariable("id") Long orderId) {
+        return voucherOrderService.cancelOrder(orderId);
+    }
+
+    @PutMapping("/{id}/use")
+    public Result useOrder(@PathVariable("id") Long orderId) {
+        return voucherOrderService.useOrder(orderId);
     }
 }
