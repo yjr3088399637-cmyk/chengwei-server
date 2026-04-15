@@ -9,4 +9,6 @@ public interface IShopCommentService extends IService<ShopComment> {
     Result saveComment(ShopComment shopComment);
 
     Result queryShopComments(Long shopId, Integer current);
+
+    Result deleteComment(Long id);
 }

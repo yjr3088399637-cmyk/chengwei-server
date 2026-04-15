@@ -66,13 +66,7 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
             return Result.fail("发布评论失败");
         }
 
-        boolean updated = blogService.update()
-                .setSql("comments = ifnull(comments, 0) + 1")
-                .eq("id", blogComments.getBlogId())
-                .update();
-        if (!updated) {
-            throw new RuntimeException("更新博客评论数失败");
-        }
+        updateBlogCommentStats(blogComments.getBlogId());
         return Result.ok();
     }
 
@@ -106,5 +100,48 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
         });
 
         return Result.ok(records, page.getTotal());
+    }
+
+    @Override
+    @Transactional
+    public Result deleteComment(Long id) {
+        if (id == null) {
+            return Result.fail("评论不存在");
+        }
+        UserDTO currentUser = UserHolder.getUser();
+        if (currentUser == null) {
+            return Result.fail("请先登录");
+        }
+
+        BlogComments comment = getById(id);
+        if (comment == null) {
+            return Result.fail("评论不存在");
+        }
+        if (!currentUser.getId().equals(comment.getUserId())) {
+            return Result.fail("无权限删除该评论");
+        }
+
+        boolean removed = removeById(id);
+        if (!removed) {
+            return Result.fail("删除评论失败");
+        }
+
+        updateBlogCommentStats(comment.getBlogId());
+        return Result.ok();
+    }
+
+    private void updateBlogCommentStats(Long blogId) {
+        long commentCount = query()
+                .eq("blog_id", blogId)
+                .eq("status", 0)
+                .count();
+
+        boolean updated = blogService.update()
+                .set("comments", commentCount)
+                .eq("id", blogId)
+                .update();
+        if (!updated) {
+            throw new RuntimeException("更新笔记评论统计失败");
+        }
     }
 }

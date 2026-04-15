@@ -103,6 +103,34 @@ public class ShopCommentServiceImpl extends ServiceImpl<ShopCommentMapper, ShopC
         return Result.ok(records, page.getTotal());
     }
 
+    @Override
+    @Transactional
+    public Result deleteComment(Long id) {
+        if (id == null) {
+            return Result.fail("评论不存在");
+        }
+        UserDTO currentUser = UserHolder.getUser();
+        if (currentUser == null) {
+            return Result.fail("请先登录");
+        }
+
+        ShopComment comment = getById(id);
+        if (comment == null) {
+            return Result.fail("评论不存在");
+        }
+        if (!currentUser.getId().equals(comment.getUserId())) {
+            return Result.fail("无权限删除该评论");
+        }
+
+        boolean removed = removeById(id);
+        if (!removed) {
+            return Result.fail("删除评论失败");
+        }
+
+        updateShopCommentStats(comment.getShopId());
+        return Result.ok();
+    }
+
     private void updateShopCommentStats(Long shopId) {
         List<ShopComment> comments = query()
                 .eq("shop_id", shopId)

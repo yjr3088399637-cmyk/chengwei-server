@@ -22,7 +22,7 @@ import static com.hmdp.utils.RedisConstants.*;
 
 
 @SpringBootTest
-class HmDianPingApplicationTests {
+class ChengWeiApplicationTests {
     @Autowired
     ShopServiceImpl shopService;
     @Autowired

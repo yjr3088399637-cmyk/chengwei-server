@@ -4,13 +4,17 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.dto.ChangePasswordDTO;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.SetPasswordDTO;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
+import com.hmdp.utils.PasswordEncoder;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.UserHolder;
@@ -41,7 +45,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public Result sendCode(String phone, HttpSession session) {
         if (RegexUtils.isPhoneInvalid(phone)) {
-            return Result.fail("手机号错误");
+            return Result.fail("手机号格式错误");
         }
         String code = RandomUtil.randomNumbers(6);
         stringRedisTemplate.opsForValue().set("login:code:" + phone, code, 2, TimeUnit.MINUTES);
@@ -52,15 +56,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public Result login(LoginFormDTO loginForm, HttpSession session) {
         String phone = loginForm.getPhone();
-        String code = loginForm.getCode();
-
         if (RegexUtils.isPhoneInvalid(phone)) {
-            return Result.fail("手机号错误");
+            return Result.fail("手机号格式错误");
         }
-        if (code == null || code.isEmpty()) {
-            return Result.fail("验证码为空");
+        if (StrUtil.isNotBlank(loginForm.getPassword())) {
+            return loginByPassword(loginForm);
         }
-        if (!code.equals(stringRedisTemplate.opsForValue().get("login:code:" + phone))) {
+        return loginByCode(loginForm);
+    }
+
+    private Result loginByCode(LoginFormDTO loginForm) {
+        String phone = loginForm.getPhone();
+        String code = loginForm.getCode();
+        if (StrUtil.isBlank(code)) {
+            return Result.fail("验证码不能为空");
+        }
+        String cacheCode = stringRedisTemplate.opsForValue().get("login:code:" + phone);
+        if (!code.equals(cacheCode)) {
             return Result.fail("验证码错误");
         }
 
@@ -71,7 +83,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             user.setNickName("user_" + RandomUtil.randomNumbers(10));
             save(user);
         }
+        return Result.ok(createLoginToken(user));
+    }
 
+    private Result loginByPassword(LoginFormDTO loginForm) {
+        User user = query().eq("phone", loginForm.getPhone()).one();
+        if (user == null) {
+            return Result.fail("账号不存在");
+        }
+        if (StrUtil.isBlank(user.getPassword())) {
+            return Result.fail("当前账号尚未设置密码");
+        }
+        if (!PasswordEncoder.matches(user.getPassword(), loginForm.getPassword())) {
+            return Result.fail("手机号或密码错误");
+        }
+        return Result.ok(createLoginToken(user));
+    }
+
+    private String createLoginToken(User user) {
         String token = "login:token:" + UUID.randomUUID();
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         Map<String, Object> map = BeanUtil.beanToMap(userDTO, new HashMap<>(),
@@ -80,8 +109,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                         .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
         stringRedisTemplate.opsForHash().putAll(token, map);
         stringRedisTemplate.expire(token, 30, TimeUnit.MINUTES);
-
-        return Result.ok(token);
+        return token;
     }
 
     @Override
@@ -120,6 +148,74 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return Result.ok();
     }
 
+    @Override
+    public Result passwordStatus() {
+        User currentUser = getCurrentUserEntity();
+        if (currentUser == null) {
+            return Result.fail("请先登录");
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("hasPassword", StrUtil.isNotBlank(currentUser.getPassword()));
+        return Result.ok(data);
+    }
+
+    @Override
+    public Result setPassword(SetPasswordDTO dto) {
+        User currentUser = getCurrentUserEntity();
+        if (currentUser == null) {
+            return Result.fail("请先登录");
+        }
+        if (dto == null || StrUtil.isBlank(dto.getPassword())) {
+            return Result.fail("新密码不能为空");
+        }
+        if (StrUtil.isNotBlank(currentUser.getPassword())) {
+            return Result.fail("当前账号已设置密码，请走修改密码流程");
+        }
+        String password = dto.getPassword().trim();
+        if (!isPasswordValid(password)) {
+            return Result.fail("密码需为 6-20 位");
+        }
+        User updateUser = new User();
+        updateUser.setId(currentUser.getId());
+        updateUser.setPassword(PasswordEncoder.encode(password));
+        updateById(updateUser);
+        return Result.ok();
+    }
+
+    @Override
+    public Result changePassword(ChangePasswordDTO dto) {
+        User currentUser = getCurrentUserEntity();
+        if (currentUser == null) {
+            return Result.fail("请先登录");
+        }
+        if (dto == null) {
+            return Result.fail("参数错误");
+        }
+        if (StrUtil.isBlank(currentUser.getPassword())) {
+            return Result.fail("当前账号尚未设置密码");
+        }
+        if (StrUtil.isBlank(dto.getOldPassword()) || StrUtil.isBlank(dto.getNewPassword())) {
+            return Result.fail("旧密码和新密码都不能为空");
+        }
+        if (!PasswordEncoder.matches(currentUser.getPassword(), dto.getOldPassword())) {
+            return Result.fail("旧密码错误");
+        }
+        String newPassword = dto.getNewPassword().trim();
+        if (!isPasswordValid(newPassword)) {
+            return Result.fail("密码需为 6-20 位");
+        }
+        if (PasswordEncoder.matches(currentUser.getPassword(), newPassword)) {
+            return Result.fail("新密码不能与旧密码一致");
+        }
+        User updateUser = new User();
+        updateUser.setId(currentUser.getId());
+        updateUser.setPassword(PasswordEncoder.encode(newPassword));
+        updateById(updateUser);
+        clearCurrentLoginToken();
+        UserHolder.removeUser();
+        return Result.ok();
+    }
+
     private void syncLoginUserCache(User updateUser, UserDTO currentUser) {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
@@ -139,6 +235,34 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         cacheMap.put("icon", updateUser.getIcon() != null ? updateUser.getIcon() : currentUser.getIcon());
         stringRedisTemplate.opsForHash().putAll(token, cacheMap);
         stringRedisTemplate.expire(token, 30, TimeUnit.MINUTES);
+    }
+
+    private User getCurrentUserEntity() {
+        UserDTO currentUser = UserHolder.getUser();
+        if (currentUser == null || currentUser.getId() == null) {
+            return null;
+        }
+        return getById(currentUser.getId());
+    }
+
+    private void clearCurrentLoginToken() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return;
+        }
+        HttpServletRequest request = attributes.getRequest();
+        if (request == null) {
+            return;
+        }
+        String token = request.getHeader("authorization");
+        if (StrUtil.isBlank(token)) {
+            return;
+        }
+        stringRedisTemplate.delete(token);
+    }
+
+    private boolean isPasswordValid(String password) {
+        return password != null && password.length() >= 6 && password.length() <= 20;
     }
 
     @Override

@@ -9,4 +9,6 @@ public interface IBlogCommentsService extends IService<BlogComments> {
     Result saveComment(BlogComments blogComments);
 
     Result queryBlogComments(Long blogId, Integer current);
+
+    Result deleteComment(Long id);
 }

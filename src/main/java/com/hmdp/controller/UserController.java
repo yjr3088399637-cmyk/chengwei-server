@@ -1,8 +1,10 @@
 package com.hmdp.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.hmdp.dto.ChangePasswordDTO;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.SetPasswordDTO;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.User;
 import com.hmdp.entity.UserInfo;
@@ -44,6 +46,21 @@ public class UserController {
     @PutMapping("/me")
     public Result updateMe(@RequestBody User user) {
         return userService.updateMyProfile(user);
+    }
+
+    @GetMapping("/password/status")
+    public Result passwordStatus() {
+        return userService.passwordStatus();
+    }
+
+    @PostMapping("/password/set")
+    public Result setPassword(@RequestBody SetPasswordDTO dto) {
+        return userService.setPassword(dto);
+    }
+
+    @PutMapping("/password/change")
+    public Result changePassword(@RequestBody ChangePasswordDTO dto) {
+        return userService.changePassword(dto);
     }
 
     @PostMapping("/logout")

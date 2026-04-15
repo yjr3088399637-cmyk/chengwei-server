@@ -52,7 +52,10 @@ public class ShopController {
             @RequestParam(value = "sortBy", required = false) String sortBy
     ) {
         if (StrUtil.isBlank(name)) {
-            return Result.ok(Collections.emptyList());
+            Page<Shop> page = shopService.query()
+                    .orderByAsc("id")
+                    .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
+            return Result.ok(page.getRecords());
         }
 
         Page<Shop> page = shopService.query()

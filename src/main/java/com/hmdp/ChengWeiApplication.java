@@ -9,10 +9,10 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @SpringBootApplication
 //暴露代理对象
 @EnableAspectJAutoProxy(exposeProxy =true)
-public class HmDianPingApplication {
+public class ChengWeiApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(HmDianPingApplication.class, args);
+        SpringApplication.run(ChengWeiApplication.class, args);
     }
 
 }

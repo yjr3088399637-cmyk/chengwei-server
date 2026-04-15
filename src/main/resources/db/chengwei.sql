@@ -5,7 +5,7 @@
  Source Server Type    : MySQL
  Source Server Version : 50622
  Source Host           : localhost:3306
- Source Schema         : hmdp
+ Source Schema         : chengwei
 
  Target Server Type    : MySQL
  Target Server Version : 50622
@@ -1257,7 +1257,6 @@ CREATE TABLE `tb_voucher`  (
 -- ----------------------------
 -- Records of tb_voucher
 -- ----------------------------
-INSERT INTO `tb_voucher` VALUES (1, 1, '50元代金券', '周一至周日均可使用', '全场通用\\n无需预约\\n可无限叠加\\不兑现、不找零\\n仅限堂食', 4750, 5000, 0, 1, '2022-01-04 09:42:39', '2022-01-04 09:43:31');
 
 -- ----------------------------
 -- Table structure for tb_voucher_order
