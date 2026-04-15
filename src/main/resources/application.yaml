@@ -4,7 +4,7 @@ spring:
   cloud:
     sentinel:
       enabled: true
-        # 推荐：开启传输层（dashboard 可见资源、实时监控）
+        # 鎺ㄨ崘锛氬紑鍚紶杈撳眰锛坉ashboard 鍙璧勬簮銆佸疄鏃剁洃鎺э級
       transport:
         dashboard: localhost:8090
         port: 8719
@@ -30,15 +30,16 @@ spring:
         min-idle: 1
         time-between-eviction-runs: 10s
   jackson:
-    default-property-inclusion: non_null # JSON处理时忽略非空字段
+    default-property-inclusion: non_null # JSON澶勭悊鏃跺拷鐣ラ潪绌哄瓧娈?
 mybatis-plus:
-  type-aliases-package: com.hmdp.entity # 别名扫描包
+  type-aliases-package: com.chengwei.entity # 鍒悕鎵弿鍖?
 logging:
   level:
-    com.hmdp: debug
+    com.chengwei: debug
 
 aliyun:
   oss:
     bucket-name: java-yjr
     endpoint: https://oss-cn-beijing.aliyuncs.com
     region: cn-beijing
+

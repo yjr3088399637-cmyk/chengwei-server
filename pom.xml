@@ -8,7 +8,7 @@
         <version>2.3.12.RELEASE</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.hmdp</groupId>
+    <groupId>com.chengwei</groupId>
     <artifactId>chengwei-server</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>chengwei-server</name>
@@ -103,3 +103,4 @@
     </build>
 
 </project>
+
