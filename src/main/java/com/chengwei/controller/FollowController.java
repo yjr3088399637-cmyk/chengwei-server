@@ -1,0 +1,46 @@
+package com.chengwei.controller;
+
+
+import com.chengwei.dto.Result;
+import com.chengwei.service.IFollowService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * <p>
+ *  前端控制器
+ * </p>
+ *
+ * @since 2021-12-22
+ */
+@RestController
+@RequestMapping("/follow")
+public class FollowController {
+    @Autowired
+    IFollowService followService;
+
+    @PutMapping("/{id}/{isFollow}")
+    public Result follow(@PathVariable("id") Long followUserId, @PathVariable("isFollow") Boolean isFollow) {
+        return followService.follow(followUserId,isFollow);
+    }
+
+    @GetMapping("/or/not/{id}")
+    public Result follow(@PathVariable("id") Long followUserId) {
+        return followService.isFollow(followUserId);
+    }
+    @GetMapping("/common/{id}")
+    public Result followCommons(@PathVariable("id") Long id){
+        return followService.followCommons(id);
+    }
+
+    @GetMapping("/me/follows")
+    public Result queryMyFollows() {
+        return followService.queryMyFollows();
+    }
+
+    @GetMapping("/me/fans")
+    public Result queryMyFans() {
+        return followService.queryMyFans();
+    }
+
+}
