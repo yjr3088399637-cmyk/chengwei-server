@@ -35,6 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.chengwei.utils.SystemConstants.DEFAULT_USER_ICON;
+import static com.chengwei.utils.SystemConstants.USER_NICK_NAME_PREFIX;
+
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
@@ -80,7 +83,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (user == null) {
             user = new User();
             user.setPhone(phone);
-            user.setNickName("user_" + RandomUtil.randomNumbers(10));
+            user.setNickName(USER_NICK_NAME_PREFIX + RandomUtil.randomNumbers(10));
+            user.setIcon(DEFAULT_USER_ICON);
             save(user);
         }
         return Result.ok(createLoginToken(user));

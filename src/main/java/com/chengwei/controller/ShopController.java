@@ -48,17 +48,20 @@ public class ShopController {
     @GetMapping("/of/name")
     public Result queryShopByName(
             @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "typeId", required = false) Long typeId,
             @RequestParam(value = "current", defaultValue = "1") Integer current,
             @RequestParam(value = "sortBy", required = false) String sortBy
     ) {
         if (StrUtil.isBlank(name)) {
             Page<Shop> page = shopService.query()
+                    .eq(typeId != null, "type_id", typeId)
                     .orderByAsc("id")
                     .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
             return Result.ok(page.getRecords());
         }
 
         Page<Shop> page = shopService.query()
+                .eq(typeId != null, "type_id", typeId)
                 .like("name", name)
                 .orderByDesc("comments".equals(sortBy), "comments")
                 .orderByDesc("score".equals(sortBy), "score")
@@ -67,6 +70,7 @@ public class ShopController {
 
         if (page.getRecords() == null || page.getRecords().isEmpty()) {
             page = shopService.query()
+                    .eq(typeId != null, "type_id", typeId)
                     .and(wrapper -> wrapper
                             .like("area", name)
                             .or()

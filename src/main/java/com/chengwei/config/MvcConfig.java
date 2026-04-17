@@ -1,6 +1,7 @@
 package com.chengwei.config;
 
 import com.chengwei.utils.LoginInterceptor;
+import com.chengwei.utils.AdminLoginInterceptor;
 import com.chengwei.utils.ClerkLoginInterceptor;
 import com.chengwei.utils.RefreshInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,8 @@ public class MvcConfig implements WebMvcConfigurer {
     @Autowired
     ClerkLoginInterceptor clerkLoginInterceptor;
     @Autowired
+    AdminLoginInterceptor adminLoginInterceptor;
+    @Autowired
     RefreshInterceptor refreshInterceptor;
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -28,10 +31,14 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/blog/hot",
                         "/user/code",
                         "/user/login",
-                        "/clerk/**"
+                        "/clerk/**",
+                        "/admin/login"
                 );
         registry.addInterceptor(clerkLoginInterceptor).addPathPatterns("/clerk/**")
                 .excludePathPatterns("/clerk/login")
+                .order(1);
+        registry.addInterceptor(adminLoginInterceptor).addPathPatterns("/admin/**")
+                .excludePathPatterns("/admin/login")
                 .order(1);
         registry.addInterceptor(refreshInterceptor).addPathPatterns("/**").order(0);
     }
