@@ -148,7 +148,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return Result.fail("更新用户信息失败");
         }
 
-        syncLoginUserCache(updateUser, currentUser);
+        User latestUser = getById(currentUser.getId());
+        syncLoginUserCache(latestUser != null ? latestUser : updateUser, currentUser);
         return Result.ok();
     }
 

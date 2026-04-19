@@ -25,13 +25,12 @@ public class ShopController {
 
     @PostMapping
     public Result saveShop(@RequestBody Shop shop) {
-        shopService.save(shop);
-        return Result.ok(shop.getId());
+        return Result.fail("请使用管理端新增店铺接口");
     }
 
     @PutMapping
     public Result updateShop(@RequestBody Shop shop) {
-        return shopService.updateShop(shop);
+        return Result.fail("请使用管理端或店长端的店铺编辑接口");
     }
 
     @GetMapping("/of/type")

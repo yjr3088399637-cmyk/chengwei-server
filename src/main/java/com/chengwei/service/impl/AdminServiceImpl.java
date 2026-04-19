@@ -175,6 +175,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
     @Override
     public Result queryClerks(String keyword) {
         List<ShopClerk> clerks = new com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper<>(shopClerkMapper)
+                .eq(ShopClerk::getRole, 1)
                 .and(StrUtil.isNotBlank(keyword), wrapper -> wrapper
                         .like(ShopClerk::getUsername, keyword.trim())
                         .or()
@@ -218,14 +219,14 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
                 .eq(ShopClerk::getUsername, saveDTO.getUsername().trim())
                 .count();
         if (exists > 0) {
-            return Result.fail("???????");
+            return Result.fail("店长账号已存在，请更换后重试");
         }
         int managerExists = new com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper<>(shopClerkMapper)
                 .eq(ShopClerk::getShopId, saveDTO.getShopId())
                 .eq(ShopClerk::getRole, 1)
                 .count();
         if (managerExists > 0) {
-            return Result.fail("???????????");
+            return Result.fail("该店铺已经有店长，请勿重复创建");
         }
 
         ShopClerk clerk = new ShopClerk();

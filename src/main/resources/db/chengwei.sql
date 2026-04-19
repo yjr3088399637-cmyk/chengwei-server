@@ -1254,15 +1254,15 @@ CREATE TABLE `tb_user_info`  (
 -- ----------------------------
 DROP TABLE IF EXISTS `tb_shop_clerk`;
 CREATE TABLE `tb_shop_clerk`  (
-  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '???',
-  `shop_id` bigint(20) UNSIGNED NOT NULL COMMENT '???id',
-  `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '??????',
-  `password` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '??????',
-  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '??????',
-  `role` tinyint(1) UNSIGNED NOT NULL DEFAULT 2 COMMENT '1??? 2???',
-  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '????1??? 0???',
-  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '??????',
-  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '??????',
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `shop_id` bigint(20) UNSIGNED NOT NULL COMMENT '店铺id',
+  `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '店员账号',
+  `password` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '登录密码',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '显示名称',
+  `role` tinyint(1) UNSIGNED NOT NULL DEFAULT 2 COMMENT '1店长 2店员',
+  `status` tinyint(1) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态：1启用 0停用',
+  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_shop_clerk_username`(`username`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Compact;
@@ -1270,7 +1270,7 @@ CREATE TABLE `tb_shop_clerk`  (
 -- ----------------------------
 -- Records of tb_shop_clerk
 -- ----------------------------
-INSERT INTO `tb_shop_clerk` VALUES (1, 1, 'clerk103', '123456', '103???', 1, 1, NOW(), NOW());
+INSERT INTO `tb_shop_clerk` VALUES (1, 1, 'clerk103', '123456', '1号店长', 1, 1, NOW(), NOW());
 
 -- ----------------------------
 -- Table structure for tb_voucher
