@@ -6,7 +6,7 @@ import com.chengwei.entity.ShopType;
 import com.chengwei.mapper.ShopTypeMapper;
 import com.chengwei.service.IShopTypeService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.chengwei.utils.RedisConstants;
+import com.chengwei.utils.redis.RedisConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;

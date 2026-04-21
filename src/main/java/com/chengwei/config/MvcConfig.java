@@ -1,9 +1,9 @@
 package com.chengwei.config;
 
-import com.chengwei.utils.LoginInterceptor;
-import com.chengwei.utils.AdminLoginInterceptor;
-import com.chengwei.utils.ClerkLoginInterceptor;
-import com.chengwei.utils.RefreshInterceptor;
+import com.chengwei.utils.interceptor.AdminLoginInterceptor;
+import com.chengwei.utils.interceptor.ClerkLoginInterceptor;
+import com.chengwei.utils.interceptor.LoginInterceptor;
+import com.chengwei.utils.interceptor.RefreshInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -32,7 +32,11 @@ public class MvcConfig implements WebMvcConfigurer {
                         "/user/code",
                         "/user/login",
                         "/clerk/**",
-                        "/admin/login"
+                        "/admin/login",
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/webjars/**"
                 );
         registry.addInterceptor(clerkLoginInterceptor).addPathPatterns("/clerk/**")
                 .excludePathPatterns("/clerk/login")

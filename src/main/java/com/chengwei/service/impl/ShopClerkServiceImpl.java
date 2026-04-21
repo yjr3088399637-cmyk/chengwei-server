@@ -16,7 +16,7 @@ import com.chengwei.entity.ShopClerk;
 import com.chengwei.mapper.ShopClerkMapper;
 import com.chengwei.service.IShopClerkService;
 import com.chengwei.service.IShopService;
-import com.chengwei.utils.ClerkHolder;
+import com.chengwei.utils.holder.ClerkHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -90,6 +90,7 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
         }
         return Result.ok(BeanUtil.copyProperties(latest, ClerkDTO.class));
     }
+
 
     @Override
     public Result queryCurrentShop() {

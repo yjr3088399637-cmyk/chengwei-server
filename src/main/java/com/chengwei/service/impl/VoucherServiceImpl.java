@@ -7,7 +7,7 @@ import com.chengwei.mapper.VoucherMapper;
 import com.chengwei.entity.SeckillVoucher;
 import com.chengwei.service.ISeckillVoucherService;
 import com.chengwei.service.IVoucherService;
-import com.chengwei.utils.RedisConstants;
+import com.chengwei.utils.redis.RedisConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;

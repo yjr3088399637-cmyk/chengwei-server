@@ -22,7 +22,7 @@ import com.chengwei.service.IAdminService;
 import com.chengwei.service.IShopService;
 import com.chengwei.service.IShopTypeService;
 import com.chengwei.service.IVoucherService;
-import com.chengwei.utils.AdminHolder;
+import com.chengwei.utils.holder.AdminHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -37,8 +37,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.chengwei.utils.RedisConstants.CACHE_SHOP_KEY;
-import static com.chengwei.utils.RedisConstants.SHOP_GEO_KEY;
+import static com.chengwei.utils.redis.RedisConstants.CACHE_SHOP_KEY;
+import static com.chengwei.utils.redis.RedisConstants.SHOP_GEO_KEY;
 
 @Service
 @RequiredArgsConstructor
@@ -52,9 +52,12 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
 
     @Override
     public Result login(AdminLoginFormDTO loginForm) {
+
+        // 管理端登录：校验账号密码后生成随机 token，并把轻量管理员信息写入 Redis。
         if (loginForm == null || StrUtil.isBlank(loginForm.getUsername()) || StrUtil.isBlank(loginForm.getPassword())) {
             return Result.fail("请输入管理员账号和密码");
         }
+        // 管理员账号单独存放在 tb_admin，不和用户端、店员端复用同一张表。
         Admin admin = lambdaQuery()
                 .eq(Admin::getUsername, loginForm.getUsername().trim())
                 .one();
@@ -64,11 +67,13 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
         if (admin.getStatus() == null || admin.getStatus() != 1) {
             return Result.fail("管理员账号不可用");
         }
+        //校验密码
         if (!loginForm.getPassword().trim().equals(admin.getPassword())) {
             return Result.fail("账号或密码错误");
         }
 
         AdminDTO adminDTO = BeanUtil.copyProperties(admin, AdminDTO.class);
+        // 后续请求靠这个 token 去 Redis 恢复当前管理员身份，因此这里采用“随机 token + Redis Hash”方案。
         String token = "admin:token:" + UUID.randomUUID();
         Map<String, Object> map = BeanUtil.beanToMap(
                 adminDTO,
@@ -77,6 +82,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
                         .setIgnoreNullValue(true)
                         .setFieldValueEditor((fieldName, fieldValue) -> fieldValue == null ? null : fieldValue.toString())
         );
+        // Redis 中只保存 AdminDTO 这类轻量字段，避免把整张管理员对象塞进登录态。
         stringRedisTemplate.opsForHash().putAll(token, map);
         stringRedisTemplate.expire(token, 30, TimeUnit.MINUTES);
 
@@ -88,10 +94,12 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
 
     @Override
     public Result me() {
+        // /admin/me 读取的是拦截器提前放进 AdminHolder 的当前管理员，而不是前端自己传管理员,这步仅仅是确认是否登录
         AdminDTO admin = AdminHolder.getAdmin();
         if (admin == null) {
             return Result.fail("请先登录管理员账号");
         }
+        // 再查一遍数据库是为了防止管理员被停用后，旧 token 还能继续访问后台。
         Admin latest = getById(admin.getId());
         if (latest == null || latest.getStatus() == null || latest.getStatus() != 1) {
             return Result.fail("管理员账号不可用");
@@ -134,7 +142,8 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
             return Result.fail(validation);
         }
 
-        Shop shop = buildShopEntity(null, saveDTO);
+        //Shop shop = buildShopEntity(null, saveDTO);
+        Shop shop = BeanUtil.copyProperties(saveDTO, Shop.class);
         shop.setSold(0);
         shop.setComments(0);
         shop.setScore(0);

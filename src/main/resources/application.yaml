@@ -40,6 +40,14 @@ logging:
   level:
     com.chengwei: debug
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+
 aliyun:
   oss:
     bucket-name: java-yjr

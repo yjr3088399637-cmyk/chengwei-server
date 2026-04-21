@@ -3,8 +3,10 @@ package com.chengwei.controller;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.chengwei.dto.Result;
-import com.chengwei.utils.AliyunOSSOperator;
-import com.chengwei.utils.SystemConstants;
+import com.chengwei.utils.common.SystemConstants;
+import com.chengwei.utils.storage.AliyunOSSOperator;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -17,11 +19,13 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("upload")
+@Tag(name = "公共-上传模块", description = "图片上传与删除")
 public class UploadController {
 
     @Autowired
     AliyunOSSOperator ossOperator;
     @PostMapping("blog")
+    @Operation(summary = "上传图片")
     public Result uploadImage(@RequestParam("file") MultipartFile image) {
         try {
             String url = ossOperator.upload(image.getBytes(), image.getOriginalFilename());
@@ -33,6 +37,7 @@ public class UploadController {
     }
 
     @GetMapping("/blog/delete")
+    @Operation(summary = "删除图片")
     public Result deleteBlogImg(@RequestParam("name") String filename) {
         File file = new File(SystemConstants.IMAGE_UPLOAD_DIR, filename);
         if (file.isDirectory()) {

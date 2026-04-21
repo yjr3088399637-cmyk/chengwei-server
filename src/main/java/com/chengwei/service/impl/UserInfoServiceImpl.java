@@ -7,15 +7,14 @@ import com.chengwei.entity.UserInfo;
 import com.chengwei.mapper.UserInfoMapper;
 import com.chengwei.service.IUserInfoService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.chengwei.utils.UserHolder;
+import com.chengwei.utils.holder.UserHolder;
 import org.springframework.stereotype.Service;
 
 /**
- * <p>
- *  服务实现类
- * </p>
+ * 用户信息服务impl
  *
- * @since 2021-12-24
+ * @author abc
+ * &#064;date  2026/04/20 10:21
  */
 @Service
 public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements IUserInfoService {

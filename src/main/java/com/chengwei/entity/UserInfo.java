@@ -3,6 +3,7 @@ package com.chengwei.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
 @TableName("tb_user_info")
+@Schema(description = "用户扩展资料")
 public class UserInfo implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -30,16 +32,19 @@ public class UserInfo implements Serializable {
      * 主键，用户id
      */
     @TableId(value = "user_id", type = IdType.INPUT)
+    @Schema(description = "用户 ID", example = "1010")
     private Long userId;
 
     /**
      * 城市名称
      */
+    @Schema(description = "城市", example = "北京")
     private String city;
 
     /**
      * 个人介绍，不要超过128个字符
      */
+    @Schema(description = "个人介绍", example = "介绍一下自己")
     private String introduce;
 
     /**
@@ -55,11 +60,13 @@ public class UserInfo implements Serializable {
     /**
      * 性别，0：男，1：女
      */
+    @Schema(description = "性别，true 表示男，false 表示女", example = "true")
     private Boolean gender;
 
     /**
      * 生日
      */
+    @Schema(description = "生日", example = "2004-11-08")
     private LocalDate birthday;
 
     /**

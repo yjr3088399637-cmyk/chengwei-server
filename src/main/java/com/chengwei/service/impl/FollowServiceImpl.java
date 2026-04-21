@@ -11,7 +11,7 @@ import com.chengwei.mapper.FollowMapper;
 import com.chengwei.service.IFollowService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chengwei.service.IUserService;
-import com.chengwei.utils.UserHolder;
+import com.chengwei.utils.holder.UserHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;

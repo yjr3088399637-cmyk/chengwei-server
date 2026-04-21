@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chengwei.entity.SeckillVoucher;
 import com.chengwei.mapper.SeckillVoucherMapper;
 import com.chengwei.service.ISeckillVoucherService;
-import com.chengwei.utils.RedisConstants;
+import com.chengwei.utils.redis.RedisConstants;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 

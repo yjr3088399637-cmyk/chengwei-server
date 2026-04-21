@@ -7,7 +7,7 @@ import com.chengwei.dto.Result;
 import com.chengwei.entity.Shop;
 import com.chengwei.mapper.ShopMapper;
 import com.chengwei.service.IShopService;
-import com.chengwei.utils.CacheClient;
+import com.chengwei.utils.cache.CacheClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.geo.Circle;
@@ -26,9 +26,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.chengwei.utils.RedisConstants.CACHE_SHOP_KEY;
-import static com.chengwei.utils.RedisConstants.LOCK_SHOP_KEY;
-import static com.chengwei.utils.RedisConstants.SHOP_GEO_KEY;
+import static com.chengwei.utils.redis.RedisConstants.CACHE_SHOP_KEY;
+import static com.chengwei.utils.redis.RedisConstants.LOCK_SHOP_KEY;
+import static com.chengwei.utils.redis.RedisConstants.SHOP_GEO_KEY;
 
 @Service
 @RequiredArgsConstructor
