@@ -68,7 +68,10 @@ Nginx (:8080)
 <p align="center">
   <img src="docs/user-home.png" width="280" alt="用户端首页" />
   <img src="docs/user-shop-detail.png" width="280" alt="店铺详情" />
+</p>
+<p align="center">
   <img src="docs/user-blog-detail.png" width="280" alt="博客详情" />
+  <img src="docs/user-order.png" width="280" alt="我的订单" />
 </p>
 
 - 首页热榜推荐（博客滚动加载）
@@ -86,7 +89,10 @@ Nginx (:8080)
 <p align="center">
   <img src="docs/manager(clerk)-home.png" width="280" alt="店员首页" />
   <img src="docs/manager(clerk)-orders.png" width="280" alt="订单管理" />
+</p>
+<p align="center">
   <img src="docs/manager(clerk)-shop.png" width="280" alt="门店资料" />
+  <img src="docs/manager(clerk)-cancle.png" width="280" alt="取消订单" />
 </p>
 
 - 店员登录 → 查看本店订单 → 按状态筛选 → 核销
