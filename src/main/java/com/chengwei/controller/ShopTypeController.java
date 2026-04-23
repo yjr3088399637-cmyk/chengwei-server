@@ -13,13 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 import java.util.List;
 
-/**
- * <p>
- * 前端控制器
- * </p>
- *
- * @since 2021-12-22
- */
+
 @RestController
 @RequestMapping("/shop-type")
 @Tag(name = "公共-店铺分类模块", description = "店铺分类列表")

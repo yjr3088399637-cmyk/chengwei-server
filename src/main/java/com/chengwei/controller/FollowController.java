@@ -8,13 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * <p>
- *  前端控制器
- * </p>
- *
- * @since 2021-12-22
- */
+
 @RestController
 @RequestMapping("/follow")
 @Tag(name = "用户端-关注模块", description = "关注、取关、共同关注、粉丝与关注列表")

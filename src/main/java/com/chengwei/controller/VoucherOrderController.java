@@ -13,13 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * <p>
- *  前端控制器
- * </p>
- *
- * @since 2021-12-22
- */
+
 @RestController
 @RequestMapping("/voucher-order")
 @Tag(name = "交易-订单模块", description = "秒杀下单、我的订单、支付、取消、使用")

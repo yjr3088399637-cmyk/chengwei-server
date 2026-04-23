@@ -12,13 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.validation.Valid;
 
-/**
- * <p>
- *  前端控制器
- * </p>
- *
- * @since 2021-12-22
- */
+
 @RestController
 @RequestMapping("/voucher")
 @Validated

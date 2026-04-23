@@ -24,13 +24,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * <p>
- *  服务实现类
- * </p>
- *
- * @since 2021-12-22
- */
 @Service
 @RequiredArgsConstructor
 public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements IFollowService {
