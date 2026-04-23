@@ -27,5 +27,4 @@ public class RedisWorker {
 
         return timestamp << BIT | increment;
     }
-
 }

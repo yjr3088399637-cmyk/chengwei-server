@@ -10,8 +10,10 @@ public class RedisConstants {
     public static final String SHOPTYPE = "shoptype";
     public static final Long CACHE_SHOP_TTL = 30L;
     public static final String CACHE_SHOP_KEY = "cache:shop:";
+    public static final String  CACHE_BLOG_KEY = "cache:blog:";
 
     public static final String LOCK_SHOP_KEY = "lock:shop:";
+    public static final String LOCK_BLOG_KEY = "lock:blog:";
     public static final Long LOCK_SHOP_TTL = 10L;
 
     public static final String SECKILL_STOCK_KEY = "seckill:stock:";
@@ -24,4 +26,12 @@ public class RedisConstants {
     public static final String ORDER_ID = "order_id";
     public static final String SECKILL_STOCK_VOUCHER_KEY = "seckill:stock:voucher:";
     public static final String SECKILL_ORDER_VOUCHER_KEY = "seckill:order:voucher:";
+    public static final String IDEMPOTENT_CREATE_SHOP_KEY = "idempotent:admin:createShop:";
+    public static final String IDEMPOTENT_CREATE_MANAGER_KEY = "idempotent:admin:createManager:";
+    public static final String IDEMPOTENT_CREATE_STAFF_KEY = "idempotent:clerk:createStaff:";
+    public static final String IDEMPOTENT_PAY_ORDER_KEY = "idempotent:user:payOrder:";
+    public static final String IDEMPOTENT_CANCEL_ORDER_KEY = "idempotent:user:cancelOrder:";
+    public static final String IDEMPOTENT_VERIFY_ORDER_KEY = "idempotent:clerk:verifyOrder:";
+    public static final String SHOP_BLOOM_KEY = "shop:bloom:";
+    public static final String BLOG_BLOOM_KEY = "blog:bloom:";
 }

@@ -15,15 +15,22 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
+
+import static com.chengwei.utils.common.RegexPatterns.PHONE_REGEX;
 
 @Slf4j
 @RestController
 @RequestMapping("/user")
+@Validated
 @Tag(name = "用户端-用户模块", description = "验证码登录、个人资料、密码、签到等接口")
 public class UserController {
 
@@ -38,19 +45,19 @@ public class UserController {
 
     @PostMapping("code")
     @Operation(summary = "发送验证码", description = "根据手机号发送登录验证码")
-    public Result sendCode(@RequestParam("phone") String phone, HttpSession session) {
+    public Result sendCode(@RequestParam("phone") @NotBlank(message = "手机号不能为空") @Pattern(regexp = PHONE_REGEX, message = "手机号格式错误") String phone, HttpSession session) {
         return userService.sendCode(phone, session);
     }
 
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "支持验证码或密码登录")
-    public Result login(@RequestBody LoginFormDTO loginForm, HttpSession session) {
+    public Result login(@Valid @RequestBody LoginFormDTO loginForm, HttpSession session) {
         return userService.login(loginForm, session);
     }
 
     @PutMapping("/me")
     @Operation(summary = "修改当前用户基础资料", description = "修改昵称、头像等基础字段")
-    public Result updateMe(@RequestBody User user) {
+    public Result updateMe(@Valid @RequestBody User user) {
         return userService.updateMyProfile(user);
     }
 
@@ -62,13 +69,13 @@ public class UserController {
 
     @PostMapping("/password/set")
     @Operation(summary = "首次设置密码")
-    public Result setPassword(@RequestBody SetPasswordDTO dto) {
+    public Result setPassword(@Valid @RequestBody SetPasswordDTO dto) {
         return userService.setPassword(dto);
     }
 
     @PutMapping("/password/change")
     @Operation(summary = "修改登录密码")
-    public Result changePassword(@RequestBody ChangePasswordDTO dto) {
+    public Result changePassword(@Valid @RequestBody ChangePasswordDTO dto) {
         return userService.changePassword(dto);
     }
 
@@ -109,7 +116,7 @@ public class UserController {
 
     @PutMapping("/info")
     @Operation(summary = "更新我的扩展资料")
-    public Result updateMyInfo(@RequestBody UserInfo userInfo) {
+    public Result updateMyInfo(@Valid @RequestBody UserInfo userInfo) {
         return userInfoService.updateMyInfo(userInfo);
     }
 

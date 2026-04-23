@@ -21,6 +21,7 @@ import com.chengwei.service.IShopService;
 import com.chengwei.service.IUserService;
 import com.chengwei.service.IVoucherOrderService;
 import com.chengwei.service.IVoucherService;
+import com.chengwei.utils.annotation.OperationLogRecord;
 import com.chengwei.utils.holder.ClerkHolder;
 import com.chengwei.utils.holder.UserHolder;
 import com.chengwei.utils.redis.RedisConstants;
@@ -124,6 +125,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         if (result.intValue() != 0) {
             return Result.fail(result.intValue() == 1 ? "库存不足" : "不能重复下单");
         }
+
         proxy = (IVoucherOrderService) AopContext.currentProxy();
         return Result.ok(orderId);
     }
@@ -185,52 +187,85 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Override
     public Result payOrder(Long orderId) {
-        return updateOrderStatus(
-                orderId,
-                STATUS_PENDING_PAY,
-                STATUS_PAID,
-                "订单不存在",
-                "只有待支付订单才能支付",
-                order -> order.setPayTime(LocalDateTime.now())
-        );
+        Long userId = UserHolder.getUser().getId();
+        String redisKey = RedisConstants.IDEMPOTENT_PAY_ORDER_KEY + userId + ":" + orderId;
+        Boolean locked = stringRedisTemplate.opsForValue()
+                .setIfAbsent(redisKey, String.valueOf(userId), Duration.ofSeconds(5));
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail("请勿重复提交");
+        }
+
+        try {
+            Result result = updateOrderStatus(
+                    orderId,
+                    STATUS_PENDING_PAY,
+                    STATUS_PAID,
+                    "订单不存在",
+                    "只有待支付订单才能支付",
+                    order -> order.setPayTime(LocalDateTime.now())
+            );
+            if (result != null && !Boolean.TRUE.equals(result.getSuccess())) {
+                stringRedisTemplate.delete(redisKey);
+            }
+            return result;
+        } catch (RuntimeException e) {
+            stringRedisTemplate.delete(redisKey);
+            throw e;
+        }
     }
 
     @Override
     public Result cancelOrder(Long orderId) {
         Long userId = UserHolder.getUser().getId();
-        VoucherOrder order = getById(orderId);
-        if (order == null) {
-            return Result.fail("订单不存在");
-        }
-        if (!userId.equals(order.getUserId())) {
-            return Result.fail("不能操作别人的订单");
-        }
-        if (order.getStatus() == null || order.getStatus() != STATUS_PENDING_PAY) {
-            return Result.fail("只有待支付订单才能取消");
+        String redisKey = RedisConstants.IDEMPOTENT_CANCEL_ORDER_KEY + userId + ":" + orderId;
+        Boolean locked = stringRedisTemplate.opsForValue()
+                .setIfAbsent(redisKey, String.valueOf(userId), Duration.ofSeconds(5));
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail("请勿重复提交");
         }
 
-        boolean success = lambdaUpdate()
-                .eq(VoucherOrder::getId, orderId)
-                .eq(VoucherOrder::getUserId, userId)
-                .eq(VoucherOrder::getStatus, STATUS_PENDING_PAY)
-                .set(VoucherOrder::getStatus, STATUS_CANCELED)
-                .update();
-        if (!success) {
-            return Result.fail("订单状态已更新，请刷新后重试");
-        }
+        try {
+            VoucherOrder order = getById(orderId);
+            if (order == null) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("订单不存在");
+            }
+            if (!userId.equals(order.getUserId())) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("不能操作别人的订单");
+            }
+            if (order.getStatus() == null || order.getStatus() != STATUS_PENDING_PAY) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("只有待支付订单才能取消");
+            }
 
-        seckillVoucherService.lambdaUpdate()
-                .eq(SeckillVoucher::getVoucherId, order.getVoucherId())
-                .setSql("stock = stock + 1")
-                .update();
-        stringRedisTemplate.opsForValue().increment(
-                RedisConstants.SECKILL_STOCK_VOUCHER_KEY + order.getVoucherId()
-        );
-        stringRedisTemplate.opsForSet().remove(
-                RedisConstants.SECKILL_ORDER_VOUCHER_KEY + order.getVoucherId(),
-                userId.toString()
-        );
-        return Result.ok();
+            boolean success = lambdaUpdate()
+                    .eq(VoucherOrder::getId, orderId)
+                    .eq(VoucherOrder::getUserId, userId)
+                    .eq(VoucherOrder::getStatus, STATUS_PENDING_PAY)
+                    .set(VoucherOrder::getStatus, STATUS_CANCELED)
+                    .update();
+            if (!success) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("订单状态已更新，请刷新后重试");
+            }
+
+            seckillVoucherService.lambdaUpdate()
+                    .eq(SeckillVoucher::getVoucherId, order.getVoucherId())
+                    .setSql("stock = stock + 1")
+                    .update();
+            stringRedisTemplate.opsForValue().increment(
+                    RedisConstants.SECKILL_STOCK_VOUCHER_KEY + order.getVoucherId()
+            );
+            stringRedisTemplate.opsForSet().remove(
+                    RedisConstants.SECKILL_ORDER_VOUCHER_KEY + order.getVoucherId(),
+                    userId.toString()
+            );
+            return Result.ok();
+        } catch (RuntimeException e) {
+            stringRedisTemplate.delete(redisKey);
+            throw e;
+        }
     }
 
     @Override
@@ -244,52 +279,75 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     @Override
+    @OperationLogRecord(module = "订单管理", action = "核销订单")
     public Result clerkVerifyOrder(ClerkVerifyOrderDTO verifyDTO) {
-        if (verifyDTO == null || verifyDTO.getOrderId() == null || StrUtil.isBlank(verifyDTO.getVerifyCode())) {
-            return Result.fail("请填写完整的订单号和核销码");
+        Long orderId = verifyDTO == null ? null : verifyDTO.getOrderId();
+        ClerkDTO clerkDTO = ClerkHolder.getClerk();
+        Long clerkId = clerkDTO == null || clerkDTO.getId() == null ? 0L : clerkDTO.getId();
+        String redisKey = RedisConstants.IDEMPOTENT_VERIFY_ORDER_KEY + clerkId + ":" + orderId;
+        Boolean locked = stringRedisTemplate.opsForValue()
+                .setIfAbsent(redisKey, String.valueOf(clerkId), Duration.ofSeconds(5));
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail("请勿重复提交");
         }
 
-        ShopClerk clerk = getCurrentActiveClerk();
-        if (clerk == null) {
-            return Result.fail("请先登录可用的店员账号");
-        }
+        try {
+            if (verifyDTO == null || verifyDTO.getOrderId() == null || StrUtil.isBlank(verifyDTO.getVerifyCode())) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("请填写完整的订单号和核销码");
+            }
+            ShopClerk clerk = getCurrentActiveClerk();
+            if (clerk == null) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("请先登录可用的店员账号");
+            }
 
-        VoucherOrder order = getById(verifyDTO.getOrderId());
-        if (order == null) {
-            return Result.fail("订单不存在");
-        }
+            VoucherOrder order = getById(verifyDTO.getOrderId());
+            if (order == null) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("订单不存在");
+            }
 
-        ensureVerifyCode(order);
-        Voucher voucher = voucherService.getById(order.getVoucherId());
-        if (voucher == null) {
-            return Result.fail("订单对应的券不存在");
-        }
-        if (!clerk.getShopId().equals(voucher.getShopId())) {
-            return Result.fail("当前店员只能核销所属门店的券");
-        }
-        if (order.getStatus() == null || order.getStatus() != STATUS_PAID) {
-            return Result.fail("只有待核销订单才能核销");
-        }
-        if (!verifyDTO.getVerifyCode().trim().equalsIgnoreCase(order.getVerifyCode())) {
-            return Result.fail("核销码不正确");
-        }
+            ensureVerifyCode(order);
+            Voucher voucher = voucherService.getById(order.getVoucherId());
+            if (voucher == null) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("订单对应的券不存在");
+            }
+            if (!clerk.getShopId().equals(voucher.getShopId())) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("当前店员只能核销所属门店的券");
+            }
+            if (order.getStatus() == null || order.getStatus() != STATUS_PAID) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("只有待核销订单才能核销");
+            }
+            if (!verifyDTO.getVerifyCode().trim().equalsIgnoreCase(order.getVerifyCode())) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("核销码不正确");
+            }
 
-        VoucherOrder updateOrder = new VoucherOrder();
-        updateOrder.setId(order.getId());
-        updateOrder.setStatus(STATUS_USED);
-        updateOrder.setUseTime(LocalDateTime.now());
-        updateOrder.setVerifyClerkId(clerk.getId());
-        updateOrder.setVerifyShopId(clerk.getShopId());
+            VoucherOrder updateOrder = new VoucherOrder();
+            updateOrder.setId(order.getId());
+            updateOrder.setStatus(STATUS_USED);
+            updateOrder.setUseTime(LocalDateTime.now());
+            updateOrder.setVerifyClerkId(clerk.getId());
+            updateOrder.setVerifyShopId(clerk.getShopId());
 
-        boolean success = lambdaUpdate()
-                .eq(VoucherOrder::getId, order.getId())
-                .eq(VoucherOrder::getStatus, STATUS_PAID)
-                .eq(VoucherOrder::getVoucherId, order.getVoucherId())
-                .update(updateOrder);
-        if (!success) {
-            return Result.fail("订单状态已变化，请刷新后重试");
+            boolean success = lambdaUpdate()
+                    .eq(VoucherOrder::getId, order.getId())
+                    .eq(VoucherOrder::getStatus, STATUS_PAID)
+                    .eq(VoucherOrder::getVoucherId, order.getVoucherId())
+                    .update(updateOrder);
+            if (!success) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("订单状态已变化，请刷新后重试");
+            }
+            return Result.ok();
+        } catch (RuntimeException e) {
+            stringRedisTemplate.delete(redisKey);
+            throw e;
         }
-        return Result.ok();
     }
 
     @Override

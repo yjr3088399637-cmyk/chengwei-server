@@ -1,20 +1,17 @@
 package com.chengwei.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chengwei.dto.Result;
 import com.chengwei.dto.UserDTO;
 import com.chengwei.entity.UserInfo;
 import com.chengwei.mapper.UserInfoMapper;
 import com.chengwei.service.IUserInfoService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chengwei.utils.holder.UserHolder;
 import org.springframework.stereotype.Service;
 
 /**
- * 用户信息服务impl
- *
- * @author abc
- * &#064;date  2026/04/20 10:21
+ * 用户扩展资料服务
  */
 @Service
 public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements IUserInfoService {
@@ -41,9 +38,6 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
         if (user == null) {
             return Result.fail("请先登录");
         }
-        if (userInfo == null) {
-            return Result.fail("参数错误");
-        }
 
         UserInfo dbInfo = getById(user.getId());
         if (dbInfo == null) {
@@ -53,16 +47,10 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
         if (userInfo.getIntroduce() != null) {
             String introduce = StrUtil.trim(userInfo.getIntroduce());
-            if (introduce.length() > 128) {
-                return Result.fail("个人介绍不能超过128个字符");
-            }
             dbInfo.setIntroduce(StrUtil.emptyToNull(introduce));
         }
         if (userInfo.getCity() != null) {
             String city = StrUtil.trim(userInfo.getCity());
-            if (city.length() > 64) {
-                return Result.fail("城市名称不能超过64个字符");
-            }
             dbInfo.setCity(StrUtil.emptyToNull(city));
         }
         if (userInfo.getGender() != null) {

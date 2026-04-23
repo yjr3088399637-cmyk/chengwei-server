@@ -16,8 +16,11 @@ import com.chengwei.entity.ShopClerk;
 import com.chengwei.mapper.ShopClerkMapper;
 import com.chengwei.service.IShopClerkService;
 import com.chengwei.service.IShopService;
+import com.chengwei.utils.annotation.OperationLogRecord;
 import com.chengwei.utils.holder.ClerkHolder;
+import com.chengwei.utils.redis.RedisConstants;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk> implements IShopClerkService {
     private static final int ROLE_MANAGER = 1;
     private static final int ROLE_STAFF = 2;
@@ -42,10 +46,6 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
 
     @Override
     public Result login(ClerkLoginFormDTO loginForm) {
-        if (loginForm == null || StrUtil.isBlank(loginForm.getUsername()) || StrUtil.isBlank(loginForm.getPassword())) {
-            return Result.fail("请输入店员账号和密码");
-        }
-
         ShopClerk clerk = lambdaQuery()
                 .eq(ShopClerk::getUsername, loginForm.getUsername().trim())
                 .one();
@@ -91,7 +91,6 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
         return Result.ok(BeanUtil.copyProperties(latest, ClerkDTO.class));
     }
 
-
     @Override
     public Result queryCurrentShop() {
         ClerkDTO clerk = ClerkHolder.getClerk();
@@ -110,6 +109,7 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
     }
 
     @Override
+    @OperationLogRecord(module = "店铺管理", action = "修改店铺资料")
     public Result updateCurrentShop(ClerkShopUpdateDTO updateDTO) {
         ClerkDTO clerk = ClerkHolder.getClerk();
         if (clerk == null) {
@@ -182,33 +182,47 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
     }
 
     @Override
+    @OperationLogRecord(module = "员工管理", action = "创建员工")
     public Result createMyStaff(ClerkStaffSaveDTO saveDTO) {
         ClerkDTO clerk = ClerkHolder.getClerk();
         if (clerk == null) {
-            return Result.fail("请先登录店员账号");
+            return Result.fail("请先登录店长账号");
         }
         if (!isManager(clerk)) {
-            return Result.fail("仅店长可以创建本店店员");
-        }
-        if (saveDTO == null || StrUtil.isBlank(saveDTO.getUsername()) || StrUtil.isBlank(saveDTO.getPassword()) || StrUtil.isBlank(saveDTO.getName())) {
-            return Result.fail("请完整填写店员账号、密码和名称");
+            return Result.fail("仅店长可以创建本店员工");
         }
 
-        long exists = lambdaQuery()
-                .eq(ShopClerk::getUsername, saveDTO.getUsername().trim())
-                .count();
-        if (exists > 0) {
-            return Result.fail("店员账号已存在");
+        String username = saveDTO.getUsername().trim();
+        String redisKey = RedisConstants.IDEMPOTENT_CREATE_STAFF_KEY + clerk.getShopId() + ":" + username;
+        Boolean locked = stringRedisTemplate.opsForValue()
+                .setIfAbsent(redisKey, String.valueOf(clerk.getId()), 5, TimeUnit.SECONDS);
+        if (Boolean.FALSE.equals(locked)) {
+            return Result.fail("请勿重复提交");
         }
 
-        ShopClerk newClerk = new ShopClerk();
-        newClerk.setShopId(clerk.getShopId());
-        newClerk.setUsername(saveDTO.getUsername().trim());
-        newClerk.setPassword(saveDTO.getPassword().trim());
-        newClerk.setName(saveDTO.getName().trim());
-        newClerk.setRole(ROLE_STAFF);
-        newClerk.setStatus(1);
-        save(newClerk);
+        ShopClerk newClerk = null;
+        try {
+            long exists = lambdaQuery()
+                    .eq(ShopClerk::getUsername, username)
+                    .count();
+            if (exists > 0) {
+                stringRedisTemplate.delete(redisKey);
+                return Result.fail("店员账号已存在");
+            }
+
+            newClerk = new ShopClerk();
+            newClerk.setShopId(clerk.getShopId());
+            newClerk.setUsername(username);
+            newClerk.setPassword(saveDTO.getPassword().trim());
+            newClerk.setName(saveDTO.getName().trim());
+            newClerk.setRole(ROLE_STAFF);
+            newClerk.setStatus(1);
+            save(newClerk);
+        } catch (Exception e) {
+            log.error("创建员工失败, shopId={}, username={}", clerk.getShopId(), username, e);
+            stringRedisTemplate.delete(redisKey);
+            throw e;
+        }
         return Result.ok(BeanUtil.copyProperties(newClerk, ClerkStaffVO.class));
     }
 
@@ -217,12 +231,6 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
         ClerkDTO clerk = ClerkHolder.getClerk();
         if (clerk == null || clerk.getId() == null) {
             return Result.fail("请先登录店员账号");
-        }
-        if (dto == null) {
-            return Result.fail("参数错误");
-        }
-        if (StrUtil.isBlank(dto.getOldPassword()) || StrUtil.isBlank(dto.getNewPassword())) {
-            return Result.fail("旧密码和新密码都不能为空");
         }
 
         ShopClerk latest = getById(clerk.getId());
@@ -234,9 +242,6 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
         String newPassword = dto.getNewPassword().trim();
         if (!oldPassword.equals(latest.getPassword())) {
             return Result.fail("旧密码错误");
-        }
-        if (newPassword.length() < 6 || newPassword.length() > 20) {
-            return Result.fail("密码长度需为 6-20 位");
         }
         if (newPassword.equals(oldPassword)) {
             return Result.fail("新密码不能与旧密码一致");
@@ -260,7 +265,6 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
         }
         String normalized = images
                 .replace("\r", "\n")
-                .replace("；", ",")
                 .replace("，", ",")
                 .replace(";", ",")
                 .replace("\n", ",");

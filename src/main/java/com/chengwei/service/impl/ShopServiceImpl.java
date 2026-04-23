@@ -1,6 +1,8 @@
 package com.chengwei.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chengwei.dto.Result;
@@ -8,8 +10,12 @@ import com.chengwei.entity.Shop;
 import com.chengwei.mapper.ShopMapper;
 import com.chengwei.service.IShopService;
 import com.chengwei.utils.cache.CacheClient;
+import com.chengwei.utils.redis.BloomFilter;
+import com.chengwei.utils.redis.RedisConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.geo.Circle;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
@@ -20,11 +26,13 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.chengwei.utils.redis.RedisConstants.CACHE_SHOP_KEY;
 import static com.chengwei.utils.redis.RedisConstants.LOCK_SHOP_KEY;
@@ -37,9 +45,23 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     private final StringRedisTemplate stringRedisTemplate;
     private final CacheClient cacheClient;
+    private final RedissonClient redissonClient;
+    private final BloomFilter bloomFilter;
+
+    //初始化过滤器
+    @PostConstruct
+    public void initBloomFilter() {
+        bloomFilter.initBloomFilter(RedisConstants.SHOP_BLOOM_KEY,this,Shop::getId);
+    }
 
     @Override
     public Result qurryById(Long id) {
+        //布隆过滤器校验
+        Boolean contain = bloomFilter.filter(RedisConstants.SHOP_BLOOM_KEY, id);
+        if (!contain) {
+            return Result.fail("非法id:"+ id);
+        }
+
         Shop shop = cacheClient.queryWithLogicalExpireTime(
                 CACHE_SHOP_KEY,
                 LOCK_SHOP_KEY,

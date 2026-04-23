@@ -5,6 +5,7 @@ import com.chengwei.entity.ShopComment;
 import com.chengwei.service.IShopCommentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,9 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
 import javax.annotation.Resource;
+import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/shop-comments")
+@Validated
 @Tag(name = "用户端-店铺评论模块", description = "店铺评论发布、删除与列表查询")
 public class ShopCommentController {
 
@@ -26,7 +29,7 @@ public class ShopCommentController {
 
     @PostMapping
     @Operation(summary = "发布店铺评论")
-    public Result saveComment(@RequestBody ShopComment shopComment) {
+    public Result saveComment(@Valid @RequestBody ShopComment shopComment) {
         return shopCommentService.saveComment(shopComment);
     }
 

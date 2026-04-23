@@ -6,9 +6,11 @@ import com.chengwei.entity.Voucher;
 import com.chengwei.service.IVoucherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.validation.Valid;
 
 /**
  * <p>
@@ -19,6 +21,7 @@ import javax.annotation.Resource;
  */
 @RestController
 @RequestMapping("/voucher")
+@Validated
 @Tag(name = "交易-优惠券模块", description = "优惠券新增、秒杀券新增、店铺券列表")
 public class VoucherController {
 
@@ -32,7 +35,7 @@ public class VoucherController {
      */
     @PostMapping
     @Operation(summary = "新增普通优惠券")
-    public Result addVoucher(@RequestBody Voucher voucher) {
+    public Result addVoucher(@Valid @RequestBody Voucher voucher) {
         voucherService.save(voucher);
         return Result.ok(voucher.getId());
     }
@@ -44,7 +47,7 @@ public class VoucherController {
      */
     @PostMapping("seckill")
     @Operation(summary = "新增秒杀券")
-    public Result addSeckillVoucher(@RequestBody Voucher voucher) {
+    public Result addSeckillVoucher(@Valid @RequestBody Voucher voucher) {
         voucherService.addSeckillVoucher(voucher);
         return Result.ok(voucher.getId());
     }

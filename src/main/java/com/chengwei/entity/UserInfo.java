@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import javax.validation.constraints.Size;
 
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -39,12 +40,14 @@ public class UserInfo implements Serializable {
      * 城市名称
      */
     @Schema(description = "城市", example = "北京")
+    @Size(max = 64, message = "城市名称长度不能超过 64 个字符")
     private String city;
 
     /**
      * 个人介绍，不要超过128个字符
      */
     @Schema(description = "个人介绍", example = "介绍一下自己")
+    @Size(max = 128, message = "个人介绍长度不能超过 128 个字符")
     private String introduce;
 
     /**

@@ -15,9 +15,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import java.util.List;
 
 /**
@@ -29,6 +31,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/blog")
+@Validated
 @Tag(name = "用户端-博客模块", description = "博客发布、编辑、点赞、详情、关注流")
 public class BlogController {
 
@@ -41,13 +44,13 @@ public class BlogController {
 
     @PostMapping
     @Operation(summary = "发布博客")
-    public Result saveBlog(@RequestBody Blog blog) {
+    public Result saveBlog(@Valid @RequestBody Blog blog) {
        return blogService.saveBlog(blog);
     }
 
     @PutMapping
     @Operation(summary = "编辑博客")
-    public Result updateBlog(@RequestBody Blog blog) {
+    public Result updateBlog(@Valid @RequestBody Blog blog) {
         return blogService.updateBlog(blog);
     }
 

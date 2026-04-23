@@ -140,9 +140,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (currentUser == null) {
             return Result.fail("请先登录");
         }
-        if (user == null) {
-            return Result.fail("参数错误");
-        }
         //创建upUser对象
         User updateUser = new User();
         // 不信任前端传入的 id，而是强制使用当前登录用户自己的 id，避免越权修改别人资料。
@@ -206,16 +203,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (currentUser == null) {
             return Result.fail("请先登录");
         }
-        if (dto == null || StrUtil.isBlank(dto.getPassword())) {
-            return Result.fail("新密码不能为空");
-        }
         if (StrUtil.isNotBlank(currentUser.getPassword())) {
             return Result.fail("当前账号已设置密码，请走修改密码流程");
         }
         String password = dto.getPassword().trim();
-        if (!isPasswordValid(password)) {
-            return Result.fail("密码需为 6-20 位");
-        }
         User updateUser = new User();
         updateUser.setId(currentUser.getId());
         updateUser.setPassword(PasswordEncoder.encode(password));
@@ -237,22 +228,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (currentUser == null) {
             return Result.fail("请先登录");
         }
-        if (dto == null) {
-            return Result.fail("参数错误");
-        }
         if (StrUtil.isBlank(currentUser.getPassword())) {
             return Result.fail("当前账号尚未设置密码");
-        }
-        if (StrUtil.isBlank(dto.getOldPassword()) || StrUtil.isBlank(dto.getNewPassword())) {
-            return Result.fail("旧密码和新密码都不能为空");
         }
         if (!PasswordEncoder.matches(currentUser.getPassword(), dto.getOldPassword())) {
             return Result.fail("旧密码错误");
         }
         String newPassword = dto.getNewPassword().trim();
-        if (!isPasswordValid(newPassword)) {
-            return Result.fail("密码需为 6-20 位");
-        }
         if (PasswordEncoder.matches(currentUser.getPassword(), newPassword)) {
             return Result.fail("新密码不能与旧密码一致");
         }

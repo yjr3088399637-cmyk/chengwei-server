@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -29,6 +32,7 @@ public class BlogComments implements Serializable {
     private Long userId;
 
     @Schema(description = "所属博客 ID", example = "2001")
+    @NotNull(message = "博客 ID 不能为空")
     private Long blogId;
 
     @TableField(exist = false)
@@ -44,6 +48,8 @@ public class BlogComments implements Serializable {
     private Long answerId;
 
     @Schema(description = "评论内容", example = "这家店我也去过，确实不错。")
+    @NotBlank(message = "评论内容不能为空")
+    @Size(max = 500, message = "评论内容长度不能超过 500 个字符")
     private String content;
 
     private Integer liked;

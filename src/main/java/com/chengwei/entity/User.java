@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import javax.validation.constraints.Size;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -43,12 +44,14 @@ public class User implements Serializable {
      * 昵称，默认是随机字符
      */
     @Schema(description = "昵称", example = "小可爱")
+    @Size(max = 32, message = "昵称长度不能超过 32 个字符")
     private String nickName;
 
     /**
      * 用户头像
      */
     @Schema(description = "头像链接", example = "https://example.com/avatar.jpg")
+    @Size(max = 255, message = "头像链接长度不能超过 255 个字符")
     private String icon;
 
     /**

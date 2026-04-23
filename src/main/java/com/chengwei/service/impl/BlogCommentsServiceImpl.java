@@ -34,16 +34,7 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
     @Override
     @Transactional
     public Result saveComment(BlogComments blogComments) {
-        if (blogComments == null || blogComments.getBlogId() == null) {
-            return Result.fail("参数错误");
-        }
-        if (StrUtil.isBlank(blogComments.getContent())) {
-            return Result.fail("评论内容不能为空");
-        }
         String content = StrUtil.trim(blogComments.getContent());
-        if (content.length() > 255) {
-            return Result.fail("评论内容过长");
-        }
         Blog blog = blogService.getById(blogComments.getBlogId());
         if (blog == null) {
             return Result.fail("笔记不存在");
@@ -89,7 +80,7 @@ public class BlogCommentsServiceImpl extends ServiceImpl<BlogCommentsMapper, Blo
 
         Set<Long> userIds = records.stream().map(BlogComments::getUserId).collect(Collectors.toSet());
         Map<Long, User> userMap = userService.listByIds(userIds).stream()
-                .collect(Collectors.toMap(User::getId, user -> user, (a, b) -> a));
+                .collect(Collectors.toMap(User::getId, user1 -> user1, (a, b) -> a));
 
         records.forEach(comment -> {
             User user = userMap.get(comment.getUserId());

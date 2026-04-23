@@ -34,19 +34,7 @@ public class ShopCommentServiceImpl extends ServiceImpl<ShopCommentMapper, ShopC
     @Override
     @Transactional
     public Result saveComment(ShopComment shopComment) {
-        if (shopComment == null || shopComment.getShopId() == null) {
-            return Result.fail("参数错误");
-        }
-        if (StrUtil.isBlank(shopComment.getContent())) {
-            return Result.fail("评论内容不能为空");
-        }
         String content = StrUtil.trim(shopComment.getContent());
-        if (content.length() > 500) {
-            return Result.fail("评论内容过长");
-        }
-        if (shopComment.getScore() == null || shopComment.getScore() < 10 || shopComment.getScore() > 50) {
-            return Result.fail("评分范围不正确");
-        }
         Shop shop = shopService.getById(shopComment.getShopId());
         if (shop == null) {
             return Result.fail("商户不存在");

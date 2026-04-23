@@ -18,14 +18,18 @@ import com.chengwei.mapper.BlogMapper;
 import com.chengwei.service.IBlogService;
 import com.chengwei.service.IFollowService;
 import com.chengwei.service.IUserService;
+import com.chengwei.utils.cache.CacheClient;
 import com.chengwei.utils.holder.UserHolder;
+import com.chengwei.utils.redis.BloomFilter;
 import com.chengwei.utils.redis.RedisConstants;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,21 +38,38 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IBlogService {
 
     private final IUserService userService;
     private final StringRedisTemplate stringRedisTemplate;
     private final IFollowService followService;
     private final BlogCommentsMapper blogCommentsMapper;
+    private final BloomFilter bloomFilter;
+    private final CacheClient cacheClient;
 
+    @PostConstruct
+    public void init() {
+        bloomFilter.initBloomFilter(RedisConstants.BLOG_BLOOM_KEY,this,Blog::getId);
+    }
     @Override
     public Result queryBlogById(Long blogId) {
-        Blog blog = getById(blogId);
-        if (blog == null) {
-            return Result.fail("笔记不存在");
+        Boolean isContain = bloomFilter.filter(RedisConstants.BLOG_BLOOM_KEY, blogId);
+
+        if (!isContain){
+            log.info("非法数据,blogId={}",blogId);
+            return Result.fail("非法数据,blogId=" + blogId);
         }
-        saveBlogUserInfo(blog);
-        setIsLike(blog);
+        Blog blog = cacheClient.queryWithLogicalExpireTime(
+                RedisConstants.CACHE_BLOG_KEY,
+                RedisConstants.LOCK_BLOG_KEY,
+                blogId,
+                Blog.class,
+                this::getById
+        );
+        if (blog == null){
+            return Result.fail("商户不存在");
+        }
         return Result.ok(blog);
     }
 
@@ -123,11 +144,14 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             return Result.fail("笔记保存失败");
         }
         List<Follow> follows = followService.query().eq("follow_user_id", userId).list();
+        //给粉丝收件箱进行推送
         follows.forEach(follow -> {
             Long fansId = follow.getUserId();
             String key = RedisConstants.FEED_KEY + fansId;
             stringRedisTemplate.opsForZSet().add(key, blog.getId().toString(), System.currentTimeMillis());
         });
+
+        bloomFilter.add(RedisConstants.BLOG_BLOOM_KEY, blog.getId());
         return Result.ok(blog.getId());
     }
 
@@ -135,15 +159,6 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     public Result updateBlog(Blog blog) {
         if (blog == null || blog.getId() == null) {
             return Result.fail("笔记不存在");
-        }
-        if (StrUtil.isBlank(blog.getTitle())) {
-            return Result.fail("标题不能为空");
-        }
-        if (StrUtil.isBlank(blog.getContent())) {
-            return Result.fail("内容不能为空");
-        }
-        if (blog.getShopId() == null) {
-            return Result.fail("请选择关联商户");
         }
         UserDTO currentUser = UserHolder.getUser();
         if (currentUser == null) {

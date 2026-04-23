@@ -72,18 +72,21 @@ public class CacheClient {
             blockHandler = "blockLogicalExpire",
             fallback = "fallbackLogicalExpire"
     )
+
+
     public <R, ID> R queryWithLogicalExpireTime(
             String keyPrefix, String lockPrefix, ID id, Class<R> type, Function<ID, R> dbQuery
     ) {
         String key = keyPrefix + id;
         String json = getCacheValue(key);
+        //判断缓存是否为null，走互斥锁逻辑
         if (StrUtil.isBlank(json)) {
             log.info("缓存未命中，ID:{}", id);
             return queryWithMutexLockAndLogicalExpire(
                     keyPrefix, lockPrefix, id, type, dbQuery, DEFAULT_LOGICAL_EXPIRE_SECONDS, TimeUnit.SECONDS
             );
         }
-
+        //判断逻辑过期
         RedisData redisData = JSONUtil.toBean(json, RedisData.class);
         R r = JSONUtil.toBean(JSONUtil.toJsonStr(redisData.getData()), type);
         LocalDateTime expireTime = redisData.getExpireTime();
@@ -94,20 +97,18 @@ public class CacheClient {
 
         log.info("{}:逻辑已过期，尝试获取锁重建缓存", Thread.currentThread().getName());
         String lockKey = lockPrefix + id;
+        //获取锁
         boolean isLock = tryLock(lockKey);
+
         if (!isLock) {
             log.info("{}:已有线程在重建缓存，先返回旧值", Thread.currentThread().getName());
             return r;
         }
 
         String latestJson = getCacheValue(key);
-        if (StrUtil.isBlank(latestJson)) {
-            unlock(lockKey);
-            return queryWithMutexLockAndLogicalExpire(
-                    keyPrefix, lockPrefix, id, type, dbQuery, DEFAULT_LOGICAL_EXPIRE_SECONDS, TimeUnit.SECONDS
-            );
-        }
 
+
+        //二次判断逻辑过期
         RedisData latestRedisData = JSONUtil.toBean(latestJson, RedisData.class);
         R latestData = JSONUtil.toBean(JSONUtil.toJsonStr(latestRedisData.getData()), type);
         LocalDateTime latestExpireTime = latestRedisData.getExpireTime();
@@ -117,6 +118,7 @@ public class CacheClient {
             return latestData;
         }
 
+        //异步重建redis缓存
         CACHE_REFRESH_EXECUTOR.submit(() -> {
             try {
                 log.info("{}:异步重建逻辑过期缓存", Thread.currentThread().getName());
@@ -191,6 +193,7 @@ public class CacheClient {
             String keyPrefix, String lockKeyPrefix, ID id, Class<R> type,
             Function<ID, R> dbQuery, Long expireTime, TimeUnit unit
     ) {
+        //查redis判断是否有值
         String key = keyPrefix + id;
         String json = getCacheValue(key);
         if (StrUtil.isNotBlank(json)) {
@@ -202,16 +205,18 @@ public class CacheClient {
             return null;
         }
         log.info("缓存未命中，ID:{}，进入互斥锁重建", id);
-
+        //获取锁
         String lockKey = lockKeyPrefix + id;
         boolean isLock = tryLock(lockKey);
         try {
             if (!isLock) {
                 log.info("未获取到锁{}，阻塞等待", lockKey);
                 Thread.sleep(100);
+                //递归查询redis
                 return queryWithMutexLockAndLogicalExpire(keyPrefix, lockKeyPrefix, id, type, dbQuery, expireTime, unit);
             }
 
+            //二次判断redis是否有值
             json = getCacheValue(key);
             if (StrUtil.isNotBlank(json)) {
                 RedisData redisData = JSONUtil.toBean(json, RedisData.class);
@@ -220,9 +225,9 @@ public class CacheClient {
             if (Objects.equals(json, "")) {
                 return null;
             }
-
+            //开始查库
             R r = dbQuery.apply(id);
-            Thread.sleep(200);
+            Thread.sleep(20);
             if (r == null) {
                 log.info("正在缓存空值，ID:{}~~", id);
                 stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);

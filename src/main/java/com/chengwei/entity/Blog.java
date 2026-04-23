@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -38,6 +41,7 @@ public class Blog implements Serializable {
      * 商户id
      */
     @Schema(description = "关联商户 ID，可为空", example = "10")
+    @NotNull(message = "请选择关联商户")
     private Long shopId;
     /**
      * 用户id
@@ -64,18 +68,23 @@ public class Blog implements Serializable {
      * 标题
      */
     @Schema(description = "标题", example = "周末去这家店真的值了")
+    @NotBlank(message = "标题不能为空")
+    @Size(max = 64, message = "标题长度不能超过 64 个字符")
     private String title;
 
     /**
      * 探店的照片，最多9张，多张以","隔开
      */
     @Schema(description = "图片链接，多个用英文逗号分隔", example = "https://example.com/1.jpg,https://example.com/2.jpg")
+    @Size(max = 2048, message = "图片链接总长度不能超过 2048 个字符")
     private String images;
 
     /**
      * 探店的文字描述
      */
     @Schema(description = "正文内容", example = "环境很舒服，适合朋友一起来。")
+    @NotBlank(message = "正文内容不能为空")
+    @Size(max = 2000, message = "正文内容长度不能超过 2000 个字符")
     private String content;
 
     /**
