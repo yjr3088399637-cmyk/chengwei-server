@@ -61,4 +61,5 @@ public class BloomFilter {
         RBloomFilter<Long> bloomFilter = redissonClient.getBloomFilter(key);
         bloomFilter.add(id);
     }
+
 }

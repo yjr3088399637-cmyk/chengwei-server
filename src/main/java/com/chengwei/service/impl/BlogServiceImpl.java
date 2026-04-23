@@ -70,6 +70,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         if (blog == null){
             return Result.fail("商户不存在");
         }
+        saveBlogUserInfo(blog);
+        setIsLike(blog);
+
         return Result.ok(blog);
     }
 
@@ -98,15 +101,18 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     public Result likeBlog(Long blogId) {
         String strUserId = UserHolder.getUser().getId().toString();
         String blogKey = RedisConstants.BLOG_LIKED_KEY + blogId;
-
+        //检查是否点赞
         Double score = stringRedisTemplate.opsForZSet().score(blogKey, strUserId);
         if (score != null) {
+            //已点赞，取消点赞
             boolean success = update()
                     .setSql("liked = liked - 1")
                     .eq("id", blogId)
                     .update();
             if (success) {
                 stringRedisTemplate.opsForZSet().remove(blogKey, strUserId);
+                //删除缓存
+                stringRedisTemplate.delete(RedisConstants.CACHE_BLOG_KEY + blogId);
             }
         } else {
             boolean success = update()
@@ -115,6 +121,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                     .update();
             if (success) {
                 stringRedisTemplate.opsForZSet().add(blogKey, strUserId, System.currentTimeMillis());
+                stringRedisTemplate.delete(RedisConstants.CACHE_BLOG_KEY + blogId);
             }
         }
         return Result.ok();
@@ -179,6 +186,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         updateBlog.setContent(StrUtil.trim(blog.getContent()));
         updateBlog.setImages(StrUtil.blankToDefault(StrUtil.trim(blog.getImages()), ""));
         boolean success = updateById(updateBlog);
+        if (success) {
+            stringRedisTemplate.delete(RedisConstants.CACHE_BLOG_KEY + blog.getId());
+        }
         return success ? Result.ok(updateBlog.getId()) : Result.fail("笔记更新失败");
     }
 
@@ -217,6 +227,8 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                     id.toString()
             ));
         }
+        stringRedisTemplate.delete(RedisConstants.CACHE_BLOG_KEY + id);
+
         return Result.ok();
     }
 

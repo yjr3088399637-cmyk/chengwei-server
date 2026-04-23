@@ -65,6 +65,12 @@ Nginx (:8080)
 
 ### 用户端
 
+<p align="center">
+  <img src="docs/user-home.png" width="280" alt="用户端首页" />
+  <img src="docs/user-shop-detail.png" width="280" alt="店铺详情" />
+  <img src="docs/user-blog-detail.png" width="280" alt="博客详情" />
+</p>
+
 - 首页热榜推荐（博客滚动加载）
 - 分类浏览 / 搜索商户
 - 店铺详情（营业时间、地址、图片、优惠券、评论）
@@ -77,12 +83,23 @@ Nginx (:8080)
 
 ### 店员端 & 店长端
 
+<p align="center">
+  <img src="docs/manager(clerk)-home.png" width="280" alt="店员首页" />
+  <img src="docs/manager(clerk)-orders.png" width="280" alt="订单管理" />
+  <img src="docs/manager(clerk)-shop.png" width="280" alt="门店资料" />
+</p>
+
 - 店员登录 → 查看本店订单 → 按状态筛选 → 核销
 - 店长登录 → 维护门店资料（名称、地址、营业时间、图片等）
 - 店长创建员工账号
 - 修改密码
 
 ### 管理端
+
+<p align="center">
+  <img src="docs/admin-home.png" width="380" alt="管理端首页" />
+  <img src="docs/admin-shops.png" width="380" alt="店铺管理" />
+</p>
 
 - 管理员登录
 - 新建店铺（写入主表 + 同步 Redis GEO + 初始化店长关系 + 增量写入布隆过滤器）
