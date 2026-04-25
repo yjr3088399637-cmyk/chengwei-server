@@ -234,12 +234,10 @@ public class ShopClerkServiceImpl extends ServiceImpl<ShopClerkMapper, ShopClerk
         }
 
         ShopClerk latest = getById(clerk.getId());
-        if (latest == null || !Integer.valueOf(1).equals(latest.getStatus())) {
-            return Result.fail("当前店员账号不可用");
-        }
 
         String oldPassword = dto.getOldPassword().trim();
         String newPassword = dto.getNewPassword().trim();
+
         if (!oldPassword.equals(latest.getPassword())) {
             return Result.fail("旧密码错误");
         }

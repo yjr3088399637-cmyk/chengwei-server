@@ -19,11 +19,8 @@ public interface IAdminService extends IService<Admin> {
 
     Result saveShop(AdminShopSaveDTO saveDTO);
 
-    Result updateShop(Long id, AdminShopSaveDTO updateDTO);
 
     Result queryClerks(String keyword);
-
-    Result createClerk(AdminClerkSaveDTO saveDTO);
 
     Result queryShopTypes();
 }

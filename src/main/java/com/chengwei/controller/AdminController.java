@@ -65,21 +65,9 @@ public class AdminController {
         return adminService.saveShop(saveDTO);
     }
 
-    @PutMapping("/shops/{id}")
-    @Operation(summary = "编辑店铺")
-    public Result updateShop(@PathVariable("id") Long id, @Valid @RequestBody AdminShopSaveDTO updateDTO) {
-        return adminService.updateShop(id, updateDTO);
-    }
-
     @GetMapping("/clerks")
     @Operation(summary = "查询店长列表")
     public Result queryClerks(@RequestParam(value = "keyword", required = false) String keyword) {
         return adminService.queryClerks(keyword);
-    }
-
-    @PostMapping("/clerks")
-    @Operation(summary = "为店铺补建店长")
-    public Result createClerk(@Valid @RequestBody AdminClerkSaveDTO saveDTO) {
-        return adminService.createClerk(saveDTO);
     }
 }

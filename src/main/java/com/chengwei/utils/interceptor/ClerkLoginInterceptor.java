@@ -36,7 +36,6 @@ public class ClerkLoginInterceptor implements HandlerInterceptor {
         }
         ClerkDTO clerkDTO = BeanUtil.fillBeanWithMap(map, new ClerkDTO(), false);
         ClerkHolder.saveClerk(clerkDTO);
-        stringRedisTemplate.expire(token, 30, TimeUnit.MINUTES);
         return true;
     }
 

@@ -86,7 +86,6 @@ public class UserController {
         if (token != null && !token.isEmpty()) {
             stringRedisTemplate.delete(token);
         }
-        UserHolder.removeUser();
         return Result.ok();
     }
 

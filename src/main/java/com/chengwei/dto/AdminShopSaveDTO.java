@@ -51,14 +51,17 @@ public class AdminShopSaveDTO {
     private String openHours;
 
     @Schema(description = "首个店长账号", example = "manager18")
+    @NotBlank(message = "营业时间不能为空")
     @Size(max = 32, message = "首个店长账号长度不能超过 32 位")
     private String clerkUsername;
 
     @Schema(description = "首个店长密码", example = "123456")
+    @NotBlank(message = "营业时间不能为空")
     @Size(min = 6, max = 20, message = "首个店长密码长度必须在 6-20 位之间")
     private String clerkPassword;
 
     @Schema(description = "首个店长名称", example = "18号店长")
+    @NotBlank(message = "营业时间不能为空")
     @Size(max = 32, message = "首个店长名称长度不能超过 32 个字符")
     private String clerkName;
 }

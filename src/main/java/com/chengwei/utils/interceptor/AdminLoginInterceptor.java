@@ -36,7 +36,6 @@ public class AdminLoginInterceptor implements HandlerInterceptor {
         }
         AdminDTO adminDTO = BeanUtil.fillBeanWithMap(map, new AdminDTO(), false);
         AdminHolder.saveAdmin(adminDTO);
-        stringRedisTemplate.expire(token, 30, TimeUnit.MINUTES);
         return true;
     }
 
