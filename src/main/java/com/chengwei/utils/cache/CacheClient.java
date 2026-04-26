@@ -1,5 +1,6 @@
 package com.chengwei.utils.cache;
 
+import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -78,7 +79,7 @@ public class CacheClient {
             String keyPrefix, String lockPrefix, ID id, Class<R> type, Function<ID, R> dbQuery
     ) {
         String key = keyPrefix + id;
-        String json = getCacheValue(key);
+        String json = stringRedisTemplate.opsForValue().get(key);
         //判断缓存是否为null，走互斥锁逻辑
         if (StrUtil.isBlank(json)) {
             log.info("缓存未命中，ID:{}", id);
@@ -105,7 +106,7 @@ public class CacheClient {
             return r;
         }
 
-        String latestJson = getCacheValue(key);
+        String latestJson = stringRedisTemplate.opsForValue().get(key);
 
 
         //二次判断逻辑过期
@@ -147,7 +148,7 @@ public class CacheClient {
             String keyPrefix, String lockKey, ID id, Class<R> type,
             Function<ID, R> dbQuery, Long expireTime, TimeUnit unit
     ) {
-        String json = getCacheValue(keyPrefix + id);
+        String json = stringRedisTemplate.opsForValue().get(keyPrefix + id);
         if (StrUtil.isNotBlank(json)) {
             log.info("缓存命中，ID:{}", id);
             return JSONUtil.toBean(json, type);
@@ -195,7 +196,7 @@ public class CacheClient {
     ) {
         //查redis判断是否有值
         String key = keyPrefix + id;
-        String json = getCacheValue(key);
+        String json = stringRedisTemplate.opsForValue().get(key);
         if (StrUtil.isNotBlank(json)) {
             RedisData redisData = JSONUtil.toBean(json, RedisData.class);
             return JSONUtil.toBean(JSONUtil.toJsonStr(redisData.getData()), type);
@@ -217,7 +218,7 @@ public class CacheClient {
             }
 
             //二次判断redis是否有值
-            json = getCacheValue(key);
+            json = stringRedisTemplate.opsForValue().get(key);
             if (StrUtil.isNotBlank(json)) {
                 RedisData redisData = JSONUtil.toBean(json, RedisData.class);
                 return JSONUtil.toBean(JSONUtil.toJsonStr(redisData.getData()), type);
@@ -247,16 +248,10 @@ public class CacheClient {
         }
     }
 
-    private String getCacheValue(String key) {
-        try {
-            return stringRedisTemplate.opsForValue().get(key);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+
 
     private boolean tryLock(String key) {
-        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10, TimeUnit.MINUTES);
+        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, Thread.currentThread().getName(), 10, TimeUnit.MINUTES);
         return BooleanUtil.isTrue(flag);
     }
 

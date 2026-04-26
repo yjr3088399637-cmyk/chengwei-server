@@ -151,35 +151,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
      */
     @Override
     public Result updateMyProfile(User user) {
-
+        if(user == null){
+            return Result.fail("用户信息不能为空");
+        }
         // 1.从ThreadLocal中获取当前登录用户上下文
         UserDTO currentUser = UserHolder.getUser();
+        // 2.设置当前登录用户id
+        user.setId(currentUser.getId());
 
-        // 2.构建更新对象，强制使用当前登录用户的id（防止越权修改他人资料）
-        User updateUser = new User();
-        // 不信任前端传入的 id，而是强制使用当前登录用户自己的 id，避免越权修改别人资料。
-        updateUser.setId(currentUser.getId());
-
-        // 3.逐字段校验合法性后赋值（只更新非null字段，实现部分更新）
-        //user其他字段判断合法性后赋值给updateUser,但updateUser部分字段仍可能为空
-        if (user.getNickName() != null) {
-            String nickName = user.getNickName().trim();
-            if (nickName.isEmpty()) {
-                return Result.fail("昵称不能为空");
-            }
-            updateUser.setNickName(nickName);
-        }
-        if (user.getIcon() != null) {
-            updateUser.setIcon(user.getIcon().trim());
-        }
-        // 4.更新数据库
-        boolean success = updateById(updateUser);
+        // 3.更新数据库
+        boolean success = updateById(user);
         if (!success) {
             return Result.fail("更新用户信息失败");
         }
-
-        // 5.更新成功后同步刷新Redis登录态，保证一致性（syncLoginUserCache内部已有null兜底，直接传updateUser即可）
-        syncLoginUserCache(updateUser, currentUser);
+        // 4.更新成功后同步刷新Redis登录态，保证一致性（syncLoginUserCache内部已有null兜底，直接传updateUser即可）
+        syncLoginUserCache(user, currentUser);
         return Result.ok();
     }
 

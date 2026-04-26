@@ -20,17 +20,16 @@ public class BloomFilter {
     private final RedissonClient redissonClient;
 
     public  <T> void initBloomFilter(String key,IService<T> service, Function<T,Long> queryId) {
+        //创建布隆过滤器
         RBloomFilter<Long> bloomFilter = redissonClient.getBloomFilter(key);
+        //初始化布隆过滤器
         bloomFilter.tryInit(10000L,0.01);
-
+        //分页查询数据并添加到布隆过滤器
         long pageSize = 1000;
         long pageNum = 1;
         while(true){
-            LambdaQueryWrapper<T> queryWrapper = new LambdaQueryWrapper<>();
-
-            queryWrapper.last("limit " + (pageNum - 1) * pageSize+ ","+ pageSize);
-
-            List<T> list = service.list(queryWrapper);
+            //分页查询数据
+            List<T> list = service.lambdaQuery().last("limit " + (pageNum - 1) * pageSize+ ","+ pageSize).list();
             //查不到值退出循环
             if(list == null||list.isEmpty()){
                 break;
@@ -38,6 +37,7 @@ public class BloomFilter {
 
             List<Long> ids = list.stream().map(queryId).collect(Collectors.toList());
             for(Long id:ids){
+                //添加数据到布隆过滤器
                 bloomFilter.add(id);
             }
             pageNum++;

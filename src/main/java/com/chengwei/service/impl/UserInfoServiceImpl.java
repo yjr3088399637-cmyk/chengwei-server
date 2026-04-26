@@ -18,10 +18,12 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
     @Override
     public Result queryMyInfo() {
+
         UserDTO user = UserHolder.getUser();
         if (user == null) {
             return Result.fail("请先登录");
         }
+        //查库
         UserInfo info = getById(user.getId());
         if (info == null) {
             info = new UserInfo();
@@ -34,33 +36,14 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
     @Override
     public Result updateMyInfo(UserInfo userInfo) {
-        UserDTO user = UserHolder.getUser();
-        if (user == null) {
-            return Result.fail("请先登录");
+        Long id = UserHolder.getUser().getId();
+        userInfo.setUserId(id);
+        //能否查到登陆用户的身份详细信息
+        if (getById(id) == null) {
+            save(userInfo);
+            return Result.ok();
         }
-
-        UserInfo dbInfo = getById(user.getId());
-        if (dbInfo == null) {
-            dbInfo = new UserInfo();
-            dbInfo.setUserId(user.getId());
-        }
-
-        if (userInfo.getIntroduce() != null) {
-            String introduce = StrUtil.trim(userInfo.getIntroduce());
-            dbInfo.setIntroduce(StrUtil.emptyToNull(introduce));
-        }
-        if (userInfo.getCity() != null) {
-            String city = StrUtil.trim(userInfo.getCity());
-            dbInfo.setCity(StrUtil.emptyToNull(city));
-        }
-        if (userInfo.getGender() != null) {
-            dbInfo.setGender(userInfo.getGender());
-        }
-        if (userInfo.getBirthday() != null) {
-            dbInfo.setBirthday(userInfo.getBirthday());
-        }
-
-        boolean success = saveOrUpdate(dbInfo);
-        return success ? Result.ok() : Result.fail("保存资料失败");
+        updateById(userInfo);
+        return Result.ok();
     }
 }

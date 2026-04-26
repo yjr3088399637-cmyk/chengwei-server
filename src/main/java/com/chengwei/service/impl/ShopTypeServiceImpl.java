@@ -30,7 +30,7 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
             return Result.ok(shopTypeList);
         }
 
-        List<ShopType> typeList = query().orderByAsc("sort").list();
+        List<ShopType> typeList = lambdaQuery().orderByAsc(ShopType::getSort).list();
         if(typeList == null){
             return Result.fail("未查询到类型列表");
         }
